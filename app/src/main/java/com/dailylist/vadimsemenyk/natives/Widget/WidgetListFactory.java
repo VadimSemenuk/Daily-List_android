@@ -17,6 +17,7 @@ import android.widget.RemoteViewsService.RemoteViewsFactory;
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.DBHelper;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
+import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemListItem;
@@ -151,8 +152,8 @@ public class WidgetListFactory implements RemoteViewsFactory {
         int _type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetID,  1);
         NoteTypes type = NoteTypes.valueOf(_type);
 
-        Calendar date = NoteRepository.convertFromLocalToUTC(Calendar.getInstance());
-        NoteRepository.startOfDay(date);
+        Calendar date = DateHelper.convertFromLocalToUTC(Calendar.getInstance());
+        DateHelper.startOfDay(date);
 
         settings = SettingsRepository.getInstance().getSettings();
 

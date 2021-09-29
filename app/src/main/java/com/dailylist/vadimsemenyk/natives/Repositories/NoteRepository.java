@@ -3,9 +3,12 @@ package com.dailylist.vadimsemenyk.natives.Repositories;
 import android.database.Cursor;
 
 import com.dailylist.vadimsemenyk.natives.DBHelper;
+import com.dailylist.vadimsemenyk.natives.Enums.NoteActions;
+import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
 import com.dailylist.vadimsemenyk.natives.Enums.SortDirection;
 import com.dailylist.vadimsemenyk.natives.Enums.SortType;
+import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
@@ -74,14 +77,14 @@ public class NoteRepository {
             if (noteA.startDateTime != null) {
                 Calendar msNoteAStartOfDay = Calendar.getInstance();
                 msNoteAStartOfDay.setTimeInMillis(noteA.startDateTime.getTimeInMillis());
-                startOfDay(msNoteAStartOfDay);
+                DateHelper.startOfDay(msNoteAStartOfDay);
                 noteASortValue = (int) (noteA.startDateTime.getTimeInMillis() - msNoteAStartOfDay.getTimeInMillis());
             }
 
             if (noteB.startDateTime != null) {
                 Calendar msNoteBStartOfDay = Calendar.getInstance();
                 msNoteBStartOfDay.setTimeInMillis(noteB.startDateTime.getTimeInMillis());
-                startOfDay(msNoteBStartOfDay);
+                DateHelper.startOfDay(msNoteBStartOfDay);
                 noteBSortValue = (int) (noteB.startDateTime.getTimeInMillis() - msNoteBStartOfDay.getTimeInMillis());
             }
 
@@ -129,7 +132,17 @@ public class NoteRepository {
 
             cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
                     sql,
-                    new String[] {"DELETE", String.valueOf(date.getTimeInMillis()), String.valueOf(date.getTimeInMillis()), "day", "week", String.valueOf(getDayOfWeekNumber(date)), "any", String.valueOf(date.getTimeInMillis()), Integer.toString(NoteTypes.Diary.getValue())}
+                    new String[] {
+                            NoteActions.DELETE.name(),
+                            String.valueOf(date.getTimeInMillis()),
+                            String.valueOf(date.getTimeInMillis()),
+                            NoteRepeatTypes.DAY.getValue(),
+                            NoteRepeatTypes.WEEK.getValue(),
+                            String.valueOf(DateHelper.getDayOfWeekNumber(date)),
+                            NoteRepeatTypes.ANY.getValue(),
+                            String.valueOf(date.getTimeInMillis()),
+                            Integer.toString(NoteTypes.Diary.getValue())
+                    }
             );
         } else {
             String sql = "SELECT id, tag, isFinished, title, contentItems, manualOrderIndex, forkFrom, date, mode"
@@ -140,7 +153,7 @@ public class NoteRepository {
 
             cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
                     sql,
-                    new String[] {"DELETE", Integer.toString(NoteTypes.Note.getValue())}
+                    new String[] {NoteActions.DELETE.name(), Integer.toString(NoteTypes.Note.getValue())}
             );
         }
 
@@ -156,14 +169,14 @@ public class NoteRepository {
                     long _startDateTime = cursor.getLong(cursor.getColumnIndex("startTime"));
                     Calendar startDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
                     startDateTime.setTimeInMillis(_startDateTime);
-                    note.startDateTime = convertFromUTCToLocal(startDateTime);
+                    note.startDateTime = DateHelper.convertFromUTCToLocal(startDateTime);
                 }
 
                 if (!cursor.isNull(cursor.getColumnIndex("endTime"))) {
                     long _endDateTime = cursor.getLong(cursor.getColumnIndex("endTime"));
                     Calendar endDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
                     endDateTime.setTimeInMillis(_endDateTime);
-                    note.endDateTime = convertFromUTCToLocal(endDateTime);
+                    note.endDateTime = DateHelper.convertFromUTCToLocal(endDateTime);
                 }
 
                 note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
@@ -217,7 +230,7 @@ public class NoteRepository {
     }
 
     public void moveNotFinishedNotesForToday() {
-        Calendar todayDateTime = convertFromLocalToUTC(startOfDay(Calendar.getInstance()));
+        Calendar todayDateTime = DateHelper.convertFromLocalToUTC(DateHelper.startOfDay(Calendar.getInstance()));
 
         String sql = "UPDATE Notes"
                 + " SET date = ?"
@@ -229,9 +242,9 @@ public class NoteRepository {
                 sql,
                 new String[] {
                         Long.toString(todayDateTime.getTimeInMillis()),
-                        "UPDATE",
+                        NoteActions.UPDATE.name(),
                         Long.toString(Calendar.getInstance().getTimeInMillis()),
-                        "no-repeat",
+                        NoteRepeatTypes.NO_REPEAT.getValue(),
                         Long.toString(Calendar.getInstance().getTimeInMillis()),
                 }
         );
@@ -266,7 +279,7 @@ public class NoteRepository {
                 new String[] {Integer.toString(nextState ? 1 : 0), Integer.toString(noteId)}
         );
 
-        updateNoteLastAction(noteId, "UPDATE");
+        updateNoteLastAction(noteId, NoteActions.UPDATE.name());
     }
 
     private Cursor getRawNote(int id) {
@@ -287,8 +300,8 @@ public class NoteRepository {
     private Integer formShadowToReal(int id) {
         Integer nextNoteId = null;
 
-        Calendar date = NoteRepository.convertFromLocalToUTC(Calendar.getInstance());
-        NoteRepository.startOfDay(date);
+        Calendar date = DateHelper.convertFromLocalToUTC(Calendar.getInstance());
+        DateHelper.startOfDay(date);
 
         String insertSQL = "INSERT INTO Notes (title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, date, forkFrom, mode, manualOrderIndex, tags)"
                 + " SELECT title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, ? AS date, ? AS forkFrom, mode, manualOrderIndex, tags"
@@ -311,7 +324,7 @@ public class NoteRepository {
         }
         cursor.close();
 
-        updateNoteLastAction(nextNoteId, "ADD");
+        updateNoteLastAction(nextNoteId, NoteActions.ADD.name());
 
         return nextNoteId;
     }
@@ -329,74 +342,5 @@ public class NoteRepository {
                         Integer.toString(id)
                 }
         );
-    }
-
-    public static Calendar convertFromUTCToLocal(Calendar utcDateTime) {
-        int utcYear = utcDateTime.get(Calendar.YEAR);
-        int utcMonth = utcDateTime.get(Calendar.MONTH);
-        int utcDate = utcDateTime.get(Calendar.DATE);
-        int utcHour = utcDateTime.get(Calendar.HOUR_OF_DAY);
-        int utcMinute = utcDateTime.get(Calendar.MINUTE);
-
-        Calendar dateTimeLocal = Calendar.getInstance();
-        dateTimeLocal.set(utcYear, utcMonth, utcDate, utcHour, utcMinute, 0);
-
-        return dateTimeLocal;
-    }
-
-    public static Calendar convertFromLocalToUTC(Calendar localDateTime) {
-        int year = localDateTime.get(Calendar.YEAR);
-        int month = localDateTime.get(Calendar.MONTH);
-        int date = localDateTime.get(Calendar.DATE);
-        int hour = localDateTime.get(Calendar.HOUR_OF_DAY);
-        int minute = localDateTime.get(Calendar.MINUTE);
-
-        Calendar dateUTC = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        dateUTC.set(year, month, date, hour, minute, 0);
-        dateUTC.set(Calendar.MILLISECOND, 0);
-
-        return dateUTC;
-    }
-
-    public static Calendar startOfDay(Calendar dateTime) {
-        dateTime.set(Calendar.HOUR_OF_DAY, 0);
-        dateTime.set(Calendar.MINUTE, 0);
-        dateTime.set(Calendar.SECOND, 0);
-        dateTime.set(Calendar.MILLISECOND, 0);
-
-        return dateTime;
-    }
-
-    private int getDayOfWeekNumber(Calendar date) {
-        int dayOfWeek = date.get(Calendar.DAY_OF_WEEK);
-        int dayOfWeekNumber = 0;
-
-        switch(dayOfWeek) {
-            case Calendar.MONDAY:
-                dayOfWeekNumber = 1;
-                break;
-            case Calendar.TUESDAY:
-                dayOfWeekNumber = 2;
-                break;
-            case Calendar.WEDNESDAY:
-                dayOfWeekNumber = 3;
-                break;
-            case Calendar.THURSDAY:
-                dayOfWeekNumber = 4;
-                break;
-            case Calendar.FRIDAY:
-                dayOfWeekNumber = 5;
-                break;
-            case Calendar.SATURDAY:
-                dayOfWeekNumber = 6;
-                break;
-            case Calendar.SUNDAY:
-                dayOfWeekNumber = 7;
-                break;
-            default:
-                dayOfWeekNumber = 1;
-        }
-
-        return dayOfWeekNumber;
     }
 }
