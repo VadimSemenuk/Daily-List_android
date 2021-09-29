@@ -32,8 +32,7 @@ public class NoteRepository {
         return ourInstance;
     }
 
-    private NoteRepository() {
-    }
+    private NoteRepository() { }
 
     static class SortByAddedTime implements Comparator<Object> {
         SortDirection direction;
@@ -159,58 +158,7 @@ public class NoteRepository {
 
         if (cursor.moveToFirst()) {
             do {
-                Note note = new Note();
-
-                note.id = cursor.getInt(cursor.getColumnIndex("id"));
-
-                note.colorTag = cursor.getString(cursor.getColumnIndex("tag"));
-
-                if (!cursor.isNull(cursor.getColumnIndex("startTime"))) {
-                    long _startDateTime = cursor.getLong(cursor.getColumnIndex("startTime"));
-                    Calendar startDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-                    startDateTime.setTimeInMillis(_startDateTime);
-                    note.startDateTime = DateHelper.convertFromUTCToLocal(startDateTime);
-                }
-
-                if (!cursor.isNull(cursor.getColumnIndex("endTime"))) {
-                    long _endDateTime = cursor.getLong(cursor.getColumnIndex("endTime"));
-                    Calendar endDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-                    endDateTime.setTimeInMillis(_endDateTime);
-                    note.endDateTime = DateHelper.convertFromUTCToLocal(endDateTime);
-                }
-
-                note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
-
-                note.title = cursor.getString(cursor.getColumnIndex("title"));
-
-                String contentItemsJson = cursor.getString(cursor.getColumnIndex("contentItems"));
-                ArrayList<NoteContentItem> contentItems = new ArrayList<NoteContentItem>();
-                Gson gson = new Gson();
-                JsonParser parser = new JsonParser();
-                if (contentItemsJson.length() > 0) {
-                    JsonArray array = parser.parse(contentItemsJson).getAsJsonArray();
-                    for (int i = 0; i < array.size(); i++) {
-                        NoteContentItem contentField = null;
-
-                        if (array.get(i) instanceof JsonObject) {
-                            JsonObject obj = array.get(i).getAsJsonObject();
-                            String contentItemType = obj.get("type").getAsString();
-                            if (contentItemType.equals("listItem")) {
-                                contentField = gson.fromJson(array.get(i), NoteContentItemListItem.class);
-                            } else if (contentItemType.equals("text")) {
-                                contentField = gson.fromJson(array.get(i), NoteContentItemTextArea.class);
-                            }
-                            contentItems.add(contentField);
-                        }
-                    }
-                }
-                note.contentItems = contentItems;
-
-                note.manualOrderIndex = cursor.isNull(cursor.getColumnIndex("manualOrderIndex")) ? null : cursor.getInt(cursor.getColumnIndex("manualOrderIndex"));
-
-                note.forkFrom = cursor.isNull(cursor.getColumnIndex("forkFrom")) ? null : cursor.getInt(cursor.getColumnIndex("forkFrom"));
-
-                notes.add(note);
+                notes.add(getNoteFromCursor(cursor));
             }
             while (cursor.moveToNext());
         }
@@ -227,6 +175,86 @@ public class NoteRepository {
         }
 
         return notes;
+    }
+
+    private Note getNote(int id) {
+        String sql = "SELECT id, title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, date, forkFrom, mode, manualOrderIndex, tags, lastAction, lastActionTime"
+                + " FROM Notes"
+                + " WHERE id = ?;";
+
+        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
+                sql,
+                new String[] {Integer.toString(id)}
+        );
+
+        Note note = null;
+
+        if (cursor.moveToFirst()) {
+            do {
+                note = getNoteFromCursor(cursor);
+            }
+            while (cursor.moveToNext());
+        }
+        cursor.close();
+
+        return note;
+    }
+
+    private Note getNoteFromCursor(Cursor cursor) {
+        Note note = new Note();
+
+        note.id = cursor.getInt(cursor.getColumnIndex("id"));
+
+        note.colorTag = cursor.getString(cursor.getColumnIndex("tag"));
+
+        if (!cursor.isNull(cursor.getColumnIndex("startTime"))) {
+            long _startDateTime = cursor.getLong(cursor.getColumnIndex("startTime"));
+            Calendar startDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            startDateTime.setTimeInMillis(_startDateTime);
+            note.startDateTime = DateHelper.convertFromUTCToLocal(startDateTime);
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("endTime"))) {
+            long _endDateTime = cursor.getLong(cursor.getColumnIndex("endTime"));
+            Calendar endDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            endDateTime.setTimeInMillis(_endDateTime);
+            note.endDateTime = DateHelper.convertFromUTCToLocal(endDateTime);
+        }
+
+        note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
+
+        note.title = cursor.getString(cursor.getColumnIndex("title"));
+
+        String contentItemsJson = cursor.getString(cursor.getColumnIndex("contentItems"));
+        ArrayList<NoteContentItem> contentItems = new ArrayList<NoteContentItem>();
+        Gson gson = new Gson();
+        JsonParser parser = new JsonParser();
+        if (contentItemsJson.length() > 0) {
+            JsonArray array = parser.parse(contentItemsJson).getAsJsonArray();
+            for (int i = 0; i < array.size(); i++) {
+                NoteContentItem contentField = null;
+
+                if (array.get(i) instanceof JsonObject) {
+                    JsonObject obj = array.get(i).getAsJsonObject();
+                    String contentItemType = obj.get("type").getAsString();
+                    if (contentItemType.equals("listItem")) {
+                        contentField = gson.fromJson(array.get(i), NoteContentItemListItem.class);
+                    } else if (contentItemType.equals("text")) {
+                        contentField = gson.fromJson(array.get(i), NoteContentItemTextArea.class);
+                    }
+                    contentItems.add(contentField);
+                }
+            }
+        }
+        note.contentItems = contentItems;
+
+        note.manualOrderIndex = cursor.isNull(cursor.getColumnIndex("manualOrderIndex")) ? null : cursor.getInt(cursor.getColumnIndex("manualOrderIndex"));
+
+        note.forkFrom = cursor.isNull(cursor.getColumnIndex("forkFrom")) ? null : cursor.getInt(cursor.getColumnIndex("forkFrom"));
+
+        note.isShadow = cursor.isNull(cursor.getColumnIndex("date")) && (NoteTypes.valueOf(cursor.getInt(cursor.getColumnIndex("mode"))) == NoteTypes.Diary);
+
+        return note;
     }
 
     public void moveNotFinishedNotesForToday() {
@@ -251,14 +279,11 @@ public class NoteRepository {
     }
 
     public void triggerNoteFinishState(int noteId) {
-        Cursor noteCursor = getRawNote(noteId);
+        Note note = getNote(noteId);
 
-        boolean nextState = !(noteCursor.getInt(noteCursor.getColumnIndex("isFinished")) == 1);
-        boolean isShadow = noteCursor.isNull(noteCursor.getColumnIndex("date")) && (NoteTypes.valueOf(noteCursor.getInt(noteCursor.getColumnIndex("mode"))) == NoteTypes.Diary);
+        boolean nextState = !note.isFinished;
 
-        noteCursor.close();
-
-        if (isShadow) {
+        if (note.isShadow) {
             noteId = formShadowToReal(noteId);
         }
 
@@ -280,21 +305,6 @@ public class NoteRepository {
         );
 
         updateNoteLastAction(noteId, NoteActions.UPDATE.name());
-    }
-
-    private Cursor getRawNote(int id) {
-        String sql = "SELECT id, title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, date, forkFrom, mode, manualOrderIndex, tags, lastAction, lastActionTime"
-                + " FROM Notes"
-                + " WHERE id = ?;";
-
-        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
-                sql,
-                new String[] {Integer.toString(id)}
-        );
-
-        cursor.moveToNext();
-
-        return cursor;
     }
 
     private Integer formShadowToReal(int id) {
