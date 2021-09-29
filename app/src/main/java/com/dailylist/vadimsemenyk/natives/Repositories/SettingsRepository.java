@@ -19,7 +19,7 @@ public class SettingsRepository {
     public Settings getSettings() {
         Settings settings = new Settings();
 
-        String sql = "SELECT sortFinBehaviour, sortType, sortDirection, lang, autoMoveNotFinishedNotes FROM Settings;";
+        String sql = "SELECT sortFinBehaviour, sortType, sortDirection, lang, autoMoveNotFinishedNotes, password FROM Settings;";
         Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(sql, null);
 
         if (cursor.moveToFirst()) {
@@ -30,6 +30,7 @@ public class SettingsRepository {
                 settings.sortDirection = SortDirection.valueOf(cursor.getInt(cursor.getColumnIndex("sortDirection")));
                 settings.lang = cursor.getString(cursor.getColumnIndex("lang"));
                 settings.autoMoveNotFinishedNotes = cursor.getInt(cursor.getColumnIndex("autoMoveNotFinishedNotes")) == 1;
+                settings.password = cursor.getString(cursor.getColumnIndex("password"));
             }
             while (cursor.moveToNext());
         }

@@ -2,4 +2,5 @@
 <resources>
     <string name="widget_list_finished_section">Завершаныя</string>
     <string name="widget_list_empty">Няма запісаў</string>
+    <string name="widget_list_password">Дадзеныя абаронены паролем</string>
 </resources>

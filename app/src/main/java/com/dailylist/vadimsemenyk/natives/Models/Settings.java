@@ -9,4 +9,5 @@ public class Settings {
     public SortDirection sortDirection;
     public String lang;
     public boolean autoMoveNotFinishedNotes;
+    public String password;
 }

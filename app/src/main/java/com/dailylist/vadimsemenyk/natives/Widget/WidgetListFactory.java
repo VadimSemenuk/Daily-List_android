@@ -157,6 +157,11 @@ public class WidgetListFactory implements RemoteViewsFactory {
 
         settings = SettingsRepository.getInstance().getSettings();
 
+        if (settings.password != null) {
+            data = new ArrayList<>();
+            return;
+        }
+
         data = NoteRepository.getInstance().getNotes(type, date, settings);
     }
 

@@ -158,7 +158,8 @@ public class WidgetProvider extends AppWidgetProvider {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", new Locale(settings.lang));
         widgetView.setTextViewText(R.id.date, dateFormat.format(Calendar.getInstance().getTime()));
 
-        widgetView.setTextViewText(R.id.empty, getLocalizedResources(context, new Locale(settings.lang)).getString(R.string.widget_list_empty));
+        String empty_placeholder = getLocalizedResources(context, new Locale(settings.lang)).getString(settings.password == null ? R.string.widget_list_empty : R.string.widget_list_password);
+        widgetView.setTextViewText(R.id.empty, empty_placeholder);
 
         setWidgetEvents(widgetView, context, id);
 

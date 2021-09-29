@@ -2,4 +2,5 @@
 <resources>
     <string name="widget_list_finished_section">Finished</string>
     <string name="widget_list_empty">No notes yet</string>
+    <string name="widget_list_password">Password protected data</string>
 </resources>
