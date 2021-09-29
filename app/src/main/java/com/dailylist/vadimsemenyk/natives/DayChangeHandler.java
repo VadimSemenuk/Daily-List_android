@@ -26,10 +26,15 @@ public class DayChangeHandler {
         dateTime.add(Calendar.MILLISECOND, 86400000);
 
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (SDK_INT >= M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dateTime.getTimeInMillis(), getWidgetUpdateReschedulePIntent(context));
-        } else {
-            alarmManager.setExact(AlarmManager.RTC, dateTime.getTimeInMillis(), getWidgetUpdateReschedulePIntent(context));
+        try {
+            if (SDK_INT >= M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, dateTime.getTimeInMillis(), getWidgetUpdateReschedulePIntent(context));
+            } else {
+                alarmManager.setExact(AlarmManager.RTC, dateTime.getTimeInMillis(), getWidgetUpdateReschedulePIntent(context));
+            }
+        } catch (Exception ignore) {
+            // Samsung devices have a known bug where a 500 alarms limit
+            // can crash the app
         }
     }
 
@@ -41,10 +46,11 @@ public class DayChangeHandler {
     private static PendingIntent getWidgetUpdateReschedulePIntent(Context context) {
         Intent intent = new Intent(context, DayChangeReceiver.class);
         intent.setAction(ACTION_DAY_CHANGED);
-        return PendingIntent.getBroadcast(context, 0, intent, 0);
+        return PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
     }
 
     public static void onDateChange(Context context) {
+        unScheduleDayChangeEvent(context);
         scheduleDayChangeEvent(context);
 
         Settings settings = SettingsRepository.getInstance().getSettings();
