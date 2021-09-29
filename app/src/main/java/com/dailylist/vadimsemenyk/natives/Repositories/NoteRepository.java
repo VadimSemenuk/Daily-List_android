@@ -8,9 +8,9 @@ import com.dailylist.vadimsemenyk.natives.Enums.SortDirection;
 import com.dailylist.vadimsemenyk.natives.Enums.SortType;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
-import com.dailylist.vadimsemenyk.natives.Widget.NoteContentItem;
-import com.dailylist.vadimsemenyk.natives.Widget.NoteContentItemListItem;
-import com.dailylist.vadimsemenyk.natives.Widget.NoteContentItemTextArea;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemListItem;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemTextArea;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -127,7 +127,7 @@ public class NoteRepository {
                     + " )"
                     + " AND n.mode = ?;";
 
-            cursor = DBHelper.getInstance().getWritableDatabase().rawQuery(
+            cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
                     sql,
                     new String[] {"DELETE", String.valueOf(date.getTimeInMillis()), String.valueOf(date.getTimeInMillis()), "day", "week", String.valueOf(getDayOfWeekNumber(date)), "any", String.valueOf(date.getTimeInMillis()), Integer.toString(NoteTypes.Diary.getValue())}
             );
@@ -138,7 +138,7 @@ public class NoteRepository {
                     + " lastAction != ?"
                     + " AND mode = ?;";
 
-            cursor = DBHelper.getInstance().getWritableDatabase().rawQuery(
+            cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
                     sql,
                     new String[] {"DELETE", Integer.toString(NoteTypes.Note.getValue())}
             );
@@ -274,7 +274,7 @@ public class NoteRepository {
                 + " FROM Notes"
                 + " WHERE id = ?;";
 
-        Cursor cursor = DBHelper.getInstance().getWritableDatabase().rawQuery(
+        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
                 sql,
                 new String[] {Integer.toString(id)}
         );
@@ -301,7 +301,7 @@ public class NoteRepository {
         );
 
         String idSQL = "SELECT last_insert_rowid()";
-        Cursor cursor = DBHelper.getInstance().getWritableDatabase().rawQuery(idSQL, null);
+        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(idSQL, null);
 
         if (cursor.moveToFirst()) {
             do {

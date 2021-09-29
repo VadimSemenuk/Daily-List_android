@@ -20,7 +20,7 @@ public class SettingsRepository {
         Settings settings = new Settings();
 
         String sql = "SELECT sortFinBehaviour, sortType, sortDirection, lang, autoMoveNotFinishedNotes FROM Settings;";
-        Cursor cursor = DBHelper.getInstance().getWritableDatabase().rawQuery(sql, null);
+        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(sql, null);
 
         if (cursor.moveToFirst()) {
             do {

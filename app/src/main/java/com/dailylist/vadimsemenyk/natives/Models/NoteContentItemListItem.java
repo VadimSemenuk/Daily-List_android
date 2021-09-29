@@ -1,4 +1,4 @@
-package com.dailylist.vadimsemenyk.natives.Widget;
+package com.dailylist.vadimsemenyk.natives.Models;
 
 import java.io.Serializable;
 

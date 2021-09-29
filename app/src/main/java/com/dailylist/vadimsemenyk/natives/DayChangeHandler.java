@@ -47,8 +47,6 @@ public class DayChangeHandler {
     public static void onDateChange(Context context) {
         scheduleDayChangeEvent(context);
 
-        DBHelper.createInstance(context.getApplicationContext());
-
         Settings settings = SettingsRepository.getInstance().getSettings();
         if (settings.autoMoveNotFinishedNotes) {
             NoteRepository.getInstance().moveNotFinishedNotesForToday();

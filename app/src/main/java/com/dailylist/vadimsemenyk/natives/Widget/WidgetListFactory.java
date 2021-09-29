@@ -10,8 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
 import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService.RemoteViewsFactory;
@@ -20,6 +18,9 @@ import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.DBHelper;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemListItem;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemTextArea;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
 import com.dailylist.vadimsemenyk.natives.Repositories.SettingsRepository;
@@ -146,8 +147,6 @@ public class WidgetListFactory implements RemoteViewsFactory {
 
     @Override
     public void onDataSetChanged() {
-        DBHelper.createInstance(context.getApplicationContext());
-
         SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
         int _type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetID,  1);
         NoteTypes type = NoteTypes.valueOf(_type);

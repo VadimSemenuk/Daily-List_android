@@ -1,7 +1,5 @@
 package com.dailylist.vadimsemenyk.natives.Models;
 
-import com.dailylist.vadimsemenyk.natives.Widget.NoteContentItem;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Calendar;

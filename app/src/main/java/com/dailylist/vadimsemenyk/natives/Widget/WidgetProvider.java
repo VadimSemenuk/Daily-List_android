@@ -14,7 +14,6 @@ import android.os.Bundle;
 import android.widget.RemoteViews;
 
 import com.dailylist.vadimsemenyk.R;
-import com.dailylist.vadimsemenyk.natives.DBHelper;
 import com.dailylist.vadimsemenyk.natives.DayChangeHandler;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
 import com.dailylist.vadimsemenyk.natives.Natives;
@@ -55,9 +54,103 @@ public class WidgetProvider extends AppWidgetProvider {
         }
     }
 
-    private void updateWidget(Context context, AppWidgetManager appWidgetManager, int id) {
-        DBHelper.createInstance(context.getApplicationContext());
+    @Override
+    public void onDeleted(Context context, int[] appWidgetIds) {
+        super.onDeleted(context, appWidgetIds);
 
+        SharedPreferences.Editor editor = context.getSharedPreferences(WIDGET_SP, Context.MODE_PRIVATE).edit();
+        for (int widgetID : appWidgetIds) {
+            editor.remove(WIDGET_SP_LIST_TYPE + "_" + widgetID);
+        }
+        editor.apply();
+    }
+
+    @Override
+    public void onDisabled(Context context) {
+        super.onDisabled(context);
+    }
+
+    @Override
+    public void onReceive(Context context, Intent intent) {
+        super.onReceive(context, intent);
+
+        Bundle extras = intent.getExtras();
+
+        if (intent.getAction().equalsIgnoreCase(ACTION_UPDATE_LIST)) {
+            updateAllWidgetsList(context);
+        } else if (intent.getAction().equalsIgnoreCase(ACTION_UPDATE)) {
+            updateAllWidgets(context);
+        } else if (intent.getAction().equalsIgnoreCase(DayChangeHandler.ACTION_DAY_CHANGED)) {
+            updateAllWidgets(context);
+        } else if (intent.getAction().equalsIgnoreCase(ACTION_LIST_ITEM_LICK)) {
+            int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+                return;
+            }
+
+            SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
+            int type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetId,  1);
+
+            int itemId = intent.getIntExtra("item_id", -1);
+            if (itemId != -1) {
+                String actionTarget = intent.getStringExtra("action_target");
+
+                if (actionTarget != null && actionTarget.equals("item")) {
+                    launchApp(context);
+
+                    JSONObject params = new JSONObject();
+                    try {
+                        params.put("id", itemId);
+                        params.put("type", type);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                    Natives.fireEvent("noteClick", params, true);
+                } else if (actionTarget != null && actionTarget.equals("finish")) {
+                    NoteRepository.getInstance().triggerNoteFinishState(itemId);
+                    updateWidgetList(context, widgetId);
+
+                    Natives.fireEvent("noteStateChange", false);
+                }
+            }
+        } else if (intent.getAction().equalsIgnoreCase(ACTION_OPEN_ADD)) {
+            int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+                return;
+            }
+
+            launchApp(context);
+
+            SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
+            int type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetId,  1);
+
+            JSONObject params = new JSONObject();
+            try {
+                params.put("type", type);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            Natives.fireEvent("addClick", params, true);
+        } else if (intent.getAction().equalsIgnoreCase(ACTION_LIST_WITH_TIME) || intent.getAction().equalsIgnoreCase(ACTION_LIST_WITHOUT_TIME)) {
+            int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+                return;
+            }
+
+            NoteTypes nextListType = intent.getAction().equalsIgnoreCase(ACTION_LIST_WITH_TIME) ? NoteTypes.Diary : NoteTypes.Note;
+
+            SharedPreferences sp = context.getSharedPreferences(WIDGET_SP, Context.MODE_PRIVATE);
+            sp.edit().putInt(WIDGET_SP_LIST_TYPE + "_" + widgetId, nextListType.getValue()).apply();
+
+            updateWidgetList(context, widgetId);
+        } else if (intent.getAction().equalsIgnoreCase(ACTION_OPEN_APP)) {
+            launchApp(context);
+        }
+    }
+
+    private void updateWidget(Context context, AppWidgetManager appWidgetManager, int id) {
         Settings settings = SettingsRepository.getInstance().getSettings();
 
         RemoteViews widgetView = new RemoteViews(context.getPackageName(), R.layout.widget);
@@ -127,7 +220,6 @@ public class WidgetProvider extends AppWidgetProvider {
     }
 
     private void updateWidgetList(Context context, int widgetId) {
-        DBHelper.createInstance(context.getApplicationContext());
         AppWidgetManager.getInstance(context).notifyAppWidgetViewDataChanged(widgetId, R.id.list);
     }
 
@@ -149,103 +241,6 @@ public class WidgetProvider extends AppWidgetProvider {
         if (launchIntent != null) {
             context.startActivity(launchIntent);
         }
-    }
-
-    @Override
-    public void onReceive(Context context, Intent intent) {
-        super.onReceive(context, intent);
-
-        Bundle extras = intent.getExtras();
-
-        if (intent.getAction().equalsIgnoreCase(ACTION_UPDATE_LIST)) {
-            updateAllWidgetsList(context);
-        } else if (intent.getAction().equalsIgnoreCase(ACTION_UPDATE)) {
-            updateAllWidgets(context);
-        } else if (intent.getAction().equalsIgnoreCase(DayChangeHandler.ACTION_DAY_CHANGED)) {
-            updateAllWidgets(context);
-        } else if (intent.getAction().equalsIgnoreCase(ACTION_LIST_ITEM_LICK)) {
-            int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                return;
-            }
-
-            SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
-            int type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetId,  1);
-
-            int itemId = intent.getIntExtra("item_id", -1);
-            if (itemId != -1) {
-                String actionTarget = intent.getStringExtra("action_target");
-
-                if (actionTarget != null && actionTarget.equals("item")) {
-                    launchApp(context);
-
-                    JSONObject params = new JSONObject();
-                    try {
-                        params.put("id", itemId);
-                        params.put("type", type);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                    }
-
-                    Natives.fireEvent("noteClick", params, true);
-                } else if (actionTarget != null && actionTarget.equals("finish")) {
-                    DBHelper.createInstance(context.getApplicationContext());
-                    NoteRepository.getInstance().triggerNoteFinishState(itemId);
-                    updateWidgetList(context, widgetId);
-
-                    Natives.fireEvent("noteStateChange", false);
-                }
-            }
-        } else if (intent.getAction().equalsIgnoreCase(ACTION_OPEN_ADD)) {
-            int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                return;
-            }
-
-            launchApp(context);
-
-            SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
-            int type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetId,  1);
-
-            JSONObject params = new JSONObject();
-            try {
-                params.put("type", type);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-
-            Natives.fireEvent("addClick", params, true);
-        } else if (intent.getAction().equalsIgnoreCase(ACTION_LIST_WITH_TIME) || intent.getAction().equalsIgnoreCase(ACTION_LIST_WITHOUT_TIME)) {
-            int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-            if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-                return;
-            }
-
-            NoteTypes nextListType = intent.getAction().equalsIgnoreCase(ACTION_LIST_WITH_TIME) ? NoteTypes.Diary : NoteTypes.Note;
-
-            SharedPreferences sp = context.getSharedPreferences(WIDGET_SP, Context.MODE_PRIVATE);
-            sp.edit().putInt(WIDGET_SP_LIST_TYPE + "_" + widgetId, nextListType.getValue()).apply();
-
-            updateWidgetList(context, widgetId);
-        } else if (intent.getAction().equalsIgnoreCase(ACTION_OPEN_APP)) {
-            launchApp(context);
-        }
-    }
-
-    @Override
-    public void onDeleted(Context context, int[] appWidgetIds) {
-        super.onDeleted(context, appWidgetIds);
-
-        SharedPreferences.Editor editor = context.getSharedPreferences(WIDGET_SP, Context.MODE_PRIVATE).edit();
-        for (int widgetID : appWidgetIds) {
-            editor.remove(WIDGET_SP_LIST_TYPE + "_" + widgetID);
-        }
-        editor.apply();
-    }
-
-    @Override
-    public void onDisabled(Context context) {
-        super.onDisabled(context);
     }
 
     static Resources getLocalizedResources(Context context, Locale desiredLocale) {
