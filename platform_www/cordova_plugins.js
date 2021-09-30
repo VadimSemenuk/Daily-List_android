@@ -330,6 +330,14 @@ cordova.define('cordova/plugin_list', function(require, exports, module) {
       "id": "skwas-cordova-plugin-datetimepicker.utils",
       "file": "plugins/skwas-cordova-plugin-datetimepicker/www/utils.js",
       "pluginId": "skwas-cordova-plugin-datetimepicker"
+    },
+    {
+      "id": "fr._46cl.focus.focus",
+      "file": "plugins/fr._46cl.focus/www/focus.js",
+      "pluginId": "fr._46cl.focus",
+      "clobbers": [
+        "cordova.plugins.Focus"
+      ]
     }
   ];
   module.exports.metadata = {
@@ -349,6 +357,7 @@ cordova.define('cordova/plugin_list', function(require, exports, module) {
     "cordova-plugin-whitelist": "1.3.4",
     "cordova-plugin-x-toast": "2.7.2",
     "cordova-sqlite-storage": "3.4.1",
-    "skwas-cordova-plugin-datetimepicker": "2.1.2"
+    "skwas-cordova-plugin-datetimepicker": "2.1.2",
+    "fr._46cl.focus": "0.1.3"
   };
 });

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.dailylist.vadimsemenyk" version="1.0.9" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0" xmlns:android="http://schemas.android.com/apk/res/android">
+<widget id="com.dailylist.vadimsemenyk" version="1.0.9" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <feature name="PhotoViewer">
         <param name="android-package" value="com.sarriaroman.PhotoViewer.PhotoViewer" />
     </feature>
@@ -52,6 +52,10 @@
     </feature>
     <feature name="DateTimePicker">
         <param name="android-package" value="com.skwas.cordova.datetimepicker.DateTimePicker" />
+    </feature>
+    <feature name="Focus">
+        <param name="android-package" value="fr._46cl.focus.Focus" />
+        <param name="onload" value="true" />
     </feature>
     <feature name="Badge">
         <param name="android-package" value="de.appplant.cordova.plugin.badge.Badge" />
