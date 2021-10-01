@@ -11,6 +11,7 @@ import android.content.Intent;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 import com.dailylist.vadimsemenyk.natives.Repositories.SettingsRepository;
+import com.dailylist.vadimsemenyk.natives.Widget.WidgetProvider;
 
 import java.util.Calendar;
 
@@ -53,10 +54,12 @@ public class DayChangeHandler {
         unScheduleDayChangeEvent(context);
         scheduleDayChangeEvent(context);
 
+        WidgetProvider.updateWidgetRequest(context);
+
         Settings settings = SettingsRepository.getInstance().getSettings();
+
         if (settings.autoMoveNotFinishedNotes) {
             NoteRepository.getInstance().moveNotFinishedNotesForToday();
-
             Natives.fireEvent("noteStateChange", false);
         }
     }

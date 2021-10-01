@@ -80,8 +80,6 @@ public class WidgetProvider extends AppWidgetProvider {
             updateAllWidgetsList(context);
         } else if (intent.getAction().equalsIgnoreCase(ACTION_UPDATE)) {
             updateAllWidgets(context);
-        } else if (intent.getAction().equalsIgnoreCase(DayChangeHandler.ACTION_DAY_CHANGED)) {
-            updateAllWidgets(context);
         } else if (intent.getAction().equalsIgnoreCase(ACTION_LIST_ITEM_LICK)) {
             int widgetId = extras.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
             if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
@@ -250,5 +248,19 @@ public class WidgetProvider extends AppWidgetProvider {
         conf.setLocale(desiredLocale);
         Context localizedContext = context.createConfigurationContext(conf);
         return localizedContext.getResources();
+    }
+
+    public static void updateWidgetRequest(Context context) {
+        sendBroadcast(context, WidgetProvider.ACTION_UPDATE);
+    }
+
+    public static void updateWidgetListRequest(Context context) {
+        sendBroadcast(context, WidgetProvider.ACTION_UPDATE_LIST);
+    }
+
+    private static void sendBroadcast(Context context, String action) {
+        Intent updateIntent = new Intent(context, WidgetProvider.class);
+        updateIntent.setAction(action);
+        context.sendBroadcast(updateIntent);
     }
 }

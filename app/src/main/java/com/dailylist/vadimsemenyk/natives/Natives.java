@@ -41,10 +41,10 @@ public class Natives extends CordovaPlugin {
             fireScheduledEvent(args.getString(0));
             return true;
         } else if (action.equals("updateWidget")) {
-            updateWidget();
+            WidgetProvider.updateWidgetRequest(cordova.getContext());
             return true;
         } else if (action.equals("updateWidgetList")) {
-            updateWidgetList();
+            WidgetProvider.updateWidgetListRequest(cordova.getContext());
             return true;
         } else if (action.equals("scheduleDayChangeNotification")) {
              DayChangeHandler.unScheduleDayChangeEvent(cordova.getContext());
@@ -91,17 +91,5 @@ public class Natives extends CordovaPlugin {
                 view.loadUrl("javascript:" + js);
             }
         });
-    }
-
-    private void updateWidget() {
-        Intent updateIntent = new Intent(cordova.getContext(), WidgetProvider.class);
-        updateIntent.setAction(WidgetProvider.ACTION_UPDATE);
-        cordova.getContext().sendBroadcast(updateIntent);
-    }
-
-    private void updateWidgetList() {
-        Intent updateIntent = new Intent(cordova.getContext(), WidgetProvider.class);
-        updateIntent.setAction(WidgetProvider.ACTION_UPDATE_LIST);
-        cordova.getContext().sendBroadcast(updateIntent);
     }
 }
