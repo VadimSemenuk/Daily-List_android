@@ -14,8 +14,8 @@ import android.os.Bundle;
 import android.widget.RemoteViews;
 
 import com.dailylist.vadimsemenyk.R;
-import com.dailylist.vadimsemenyk.natives.DayChangeHandler;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
+import com.dailylist.vadimsemenyk.natives.Helpers.Helpers;
 import com.dailylist.vadimsemenyk.natives.Natives;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
@@ -94,7 +94,7 @@ public class WidgetProvider extends AppWidgetProvider {
                 String actionTarget = intent.getStringExtra("action_target");
 
                 if (actionTarget != null && actionTarget.equals("item")) {
-                    launchApp(context);
+                    Helpers.launchApp();
 
                     JSONObject params = new JSONObject();
                     try {
@@ -118,7 +118,7 @@ public class WidgetProvider extends AppWidgetProvider {
                 return;
             }
 
-            launchApp(context);
+            Helpers.launchApp();
 
             SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
             int type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetId,  1);
@@ -144,7 +144,7 @@ public class WidgetProvider extends AppWidgetProvider {
 
             updateWidgetList(context, widgetId);
         } else if (intent.getAction().equalsIgnoreCase(ACTION_OPEN_APP)) {
-            launchApp(context);
+            Helpers.launchApp();
         }
     }
 
@@ -233,13 +233,6 @@ public class WidgetProvider extends AppWidgetProvider {
         ComponentName thisAppWidget = new ComponentName(context.getPackageName(), getClass().getName());
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         return appWidgetManager.getAppWidgetIds(thisAppWidget);
-    }
-
-    private void launchApp(Context context) {
-        Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage("com.dailylist.vadimsemenyk");
-        if (launchIntent != null) {
-            context.startActivity(launchIntent);
-        }
     }
 
     static Resources getLocalizedResources(Context context, Locale desiredLocale) {

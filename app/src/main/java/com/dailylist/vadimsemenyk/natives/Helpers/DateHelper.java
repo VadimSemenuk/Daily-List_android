@@ -72,4 +72,47 @@ public class DateHelper {
 
         return dayOfWeekNumber;
     }
+
+    static public int getDayOfWeek(int number) {
+        int dayOfWeek = Calendar.MONDAY;
+
+        switch(number) {
+            case 1:
+                dayOfWeek = Calendar.MONDAY;
+                break;
+            case 2:
+                dayOfWeek = Calendar.TUESDAY;
+                break;
+            case 3:
+                dayOfWeek = Calendar.WEDNESDAY;
+                break;
+            case 4:
+                dayOfWeek = Calendar.THURSDAY;
+                break;
+            case 5:
+                dayOfWeek = Calendar.FRIDAY;
+                break;
+            case 6:
+                dayOfWeek = Calendar.SATURDAY;
+                break;
+            case 7:
+                dayOfWeek = Calendar.SUNDAY;
+                break;
+            default:
+                dayOfWeek = Calendar.MONDAY;
+        }
+
+        return dayOfWeek;
+    }
+
+    static public Calendar getDateTime(Calendar date, Calendar time) {
+        Calendar result = (Calendar) date.clone();
+
+        result.set(Calendar.HOUR_OF_DAY, time.get(Calendar.HOUR_OF_DAY));
+        result.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
+        result.set(Calendar.SECOND, time.get(Calendar.SECOND));
+        result.set(Calendar.MILLISECOND, time.get(Calendar.MILLISECOND));
+
+        return result;
+    }
 }

@@ -1,16 +1,17 @@
 package com.dailylist.vadimsemenyk.natives;
 
 import android.app.Activity;
-import android.content.Intent;
 
+import com.dailylist.vadimsemenyk.natives.Notifications.NotificationOptions;
+import com.dailylist.vadimsemenyk.natives.Notifications.Notifications;
 import com.dailylist.vadimsemenyk.natives.Widget.WidgetProvider;
+import com.google.gson.Gson;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CallbackContext;
 
 import org.apache.cordova.CordovaWebView;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -35,10 +36,10 @@ public class Natives extends CordovaPlugin {
     }
 
     @Override
-    public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
+    public boolean execute(String action, String args, CallbackContext callbackContext) throws JSONException {
         if (action.equals("eventAdded")) {
             isWebAppListenEvents = true;
-            fireScheduledEvent(args.getString(0));
+            fireScheduledEvent(args);
             return true;
         } else if (action.equals("updateWidget")) {
             WidgetProvider.updateWidgetRequest(cordova.getContext());
@@ -47,13 +48,30 @@ public class Natives extends CordovaPlugin {
             WidgetProvider.updateWidgetListRequest(cordova.getContext());
             return true;
         } else if (action.equals("scheduleDayChangeNotification")) {
-             DayChangeHandler.unScheduleDayChangeEvent(cordova.getContext());
-             DayChangeHandler.scheduleDayChangeEvent(cordova.getContext());
-             return true;
-         }
+            DayChangeHandler.unScheduleDayChangeEvent(cordova.getContext());
+            DayChangeHandler.scheduleDayChangeEvent(cordova.getContext());
+            return true;
+        } else if (action.equals("scheduleNotification")) {
+            scheduleNotification(args);
+        } else if (action.equals("cancelNotification")) {
+            Notifications.cancel(Integer.parseInt(args));
+        }
         return false;
     }
 
+    private void scheduleNotification(String optionsJSON) {
+        NotificationOptions options = null;
+        Gson gson = new Gson();
+        if (optionsJSON != null && optionsJSON.length() > 0) {
+            options = gson.fromJson(optionsJSON, NotificationOptions.class);
+        }
+
+        if (options == null) {
+            return;
+        }
+
+        Notifications.schedule(options);
+    }
 
     static boolean isAppRunning() {
         return webView != null;

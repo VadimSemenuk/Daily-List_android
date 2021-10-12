@@ -20,12 +20,16 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.TimeZone;
 
 public class NoteRepository {
+    private String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
+            + ", (select GROUP_CONCAT(nrv.value, ',') from NotesRepeatValues nrv where nrv.noteId = n.id OR nrv.noteId = n.forkFrom) as repeatValues";
+
     private static final NoteRepository ourInstance = new NoteRepository();
 
     public static NoteRepository getInstance() {
@@ -111,7 +115,7 @@ public class NoteRepository {
         Cursor cursor = null;
 
         if (type == NoteTypes.Diary) {
-            String sql = "SELECT id, tag, startTime, endTime, isFinished, title, contentItems, manualOrderIndex, forkFrom, date, mode"
+            String sql = "SELECT " + noteSQLFields
                     + " FROM Notes n"
                     + " LEFT JOIN NotesRepeatValues rep ON n.id = rep.noteId"
                     + " WHERE"
@@ -178,26 +182,27 @@ public class NoteRepository {
     }
 
     private Note getNote(int id) {
-        String sql = "SELECT id, title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, date, forkFrom, mode, manualOrderIndex, tags, lastAction, lastActionTime"
-                + " FROM Notes"
-                + " WHERE id = ?;";
+        return getNotes("n.id = ?", new String[] {Integer.toString(id)}).get(0);
+    }
 
-        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
-                sql,
-                new String[] {Integer.toString(id)}
-        );
+    private ArrayList<Note> getNotes(String conditions, String[] conditionsValues) {
+        String sql = "SELECT " + noteSQLFields
+                + " FROM Notes n"
+                + " WHERE " + conditions + ";";
 
-        Note note = null;
+        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(sql, conditionsValues);
+
+        ArrayList<Note> notes = new ArrayList<>();
 
         if (cursor.moveToFirst()) {
             do {
-                note = getNoteFromCursor(cursor);
+                notes.add(getNoteFromCursor(cursor));
             }
             while (cursor.moveToNext());
         }
         cursor.close();
 
-        return note;
+        return notes;
     }
 
     private Note getNoteFromCursor(Cursor cursor) {
@@ -219,6 +224,20 @@ public class NoteRepository {
             Calendar endDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
             endDateTime.setTimeInMillis(_endDateTime);
             note.endDateTime = DateHelper.convertFromUTCToLocal(endDateTime);
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("date"))) {
+            long _date = cursor.getLong(cursor.getColumnIndex("date"));
+            Calendar date = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            date.setTimeInMillis(_date);
+            note.date = DateHelper.convertFromUTCToLocal(date);
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("repeatItemDate"))) {
+            long _date = cursor.getLong(cursor.getColumnIndex("repeatItemDate"));
+            Calendar date = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            date.setTimeInMillis(_date);
+            note.repeatItemDate = DateHelper.convertFromUTCToLocal(date);
         }
 
         note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
@@ -253,6 +272,14 @@ public class NoteRepository {
         note.forkFrom = cursor.isNull(cursor.getColumnIndex("forkFrom")) ? null : cursor.getInt(cursor.getColumnIndex("forkFrom"));
 
         note.isShadow = cursor.isNull(cursor.getColumnIndex("date")) && (NoteTypes.valueOf(cursor.getInt(cursor.getColumnIndex("mode"))) == NoteTypes.Diary);
+
+        note.repeatType = NoteRepeatTypes.valueOf(cursor.getString(cursor.getColumnIndex("repeatType")));
+
+        ArrayList<String> repeatValues = cursor.isNull(cursor.getColumnIndex("repeatValues")) ? null : new ArrayList<>(Arrays.asList(cursor.getString(cursor.getColumnIndex("repeatValues")).split(",")));
+        note.repeatValues = new ArrayList<Long>();
+        for (String repeatValue : repeatValues) {
+            note.repeatValues.add(Long.parseLong(repeatValue));
+        }
 
         return note;
     }
@@ -352,5 +379,51 @@ public class NoteRepository {
                         Integer.toString(id)
                 }
         );
+    }
+
+    private Calendar getRepeatNoteNextDateUTC(NoteRepeatTypes repeatType, ArrayList<Long> repeatValues) {
+        if (repeatType == NoteRepeatTypes.DAY) {
+            Calendar resultDateTime = DateHelper.startOfDay(Calendar.getInstance());
+            resultDateTime.add(Calendar.DATE, 1);
+            return DateHelper.convertFromLocalToUTC(resultDateTime);
+        } else if (repeatType == NoteRepeatTypes.WEEK) {
+            int currentWeekDay = DateHelper.getDayOfWeekNumber(Calendar.getInstance());
+
+            Collections.sort(repeatValues);
+
+            Long result = repeatValues.get(0);
+            for (Long repeatValue : repeatValues) {
+                if (repeatValue >= currentWeekDay) {
+                    result = repeatValue;
+                    break;
+                }
+            }
+
+            Calendar resultDateTime = DateHelper.startOfDay(Calendar.getInstance());
+            resultDateTime.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
+
+            return DateHelper.convertFromLocalToUTC(resultDateTime);
+        } else if (repeatType == NoteRepeatTypes.ANY) {
+            Long currentDateTimeUTCMS = DateHelper.convertFromLocalToUTC(DateHelper.startOfDay(Calendar.getInstance())).getTimeInMillis();
+
+            Long result = null;
+            for (Long repeatValue : repeatValues) {
+                if (repeatValue >= currentDateTimeUTCMS) {
+                    result = repeatValue;
+                    break;
+                }
+            }
+
+            if (result == null) {
+                return null;
+            }
+
+            Calendar resultDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+            resultDateTime.setTimeInMillis(result);
+
+            return resultDateTime;
+        }
+
+        return null;
     }
 }
