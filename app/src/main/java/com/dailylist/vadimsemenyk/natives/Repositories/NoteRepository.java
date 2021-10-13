@@ -27,7 +27,7 @@ import java.util.Comparator;
 import java.util.TimeZone;
 
 public class NoteRepository {
-    private String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
+    public String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
             + ", (select GROUP_CONCAT(nrv.value, ',') from NotesRepeatValues nrv where nrv.noteId = n.id OR nrv.noteId = n.forkFrom) as repeatValues";
 
     private static final NoteRepository ourInstance = new NoteRepository();
@@ -105,13 +105,28 @@ public class NoteRepository {
         }
     }
 
-    public ArrayList<Note> getNotes(NoteTypes type, Calendar date, Settings settings) {
-        ArrayList<Note> notes = new ArrayList<>();
+    public ArrayList<Note> queryNotes(String sql, String[] params) {
+        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(sql, params);
 
-        Cursor cursor = null;
+        ArrayList<Note> notes = new ArrayList<Note>();
+
+        if (cursor.moveToFirst()) {
+            do {
+                notes.add(getNoteFromCursor(cursor));
+            }
+            while (cursor.moveToNext());
+        }
+        cursor.close();
+
+        return notes;
+    }
+
+    public ArrayList<Note> getNotes(NoteTypes type, Calendar date, Settings settings) {
+        String sql;
+        String[] params;
 
         if (type == NoteTypes.Diary) {
-            String sql = "SELECT " + noteSQLFields
+            sql = "SELECT " + noteSQLFields
                     + " FROM Notes n"
                     + " LEFT JOIN NotesRepeatValues rep ON n.id = rep.noteId"
                     + " WHERE"
@@ -129,40 +144,28 @@ public class NoteRepository {
                     + " )"
                     + " AND n.mode = ?;";
 
-            cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
-                    sql,
-                    new String[] {
-                            NoteActions.DELETE.name(),
-                            String.valueOf(date.getTimeInMillis()),
-                            String.valueOf(date.getTimeInMillis()),
-                            NoteRepeatTypes.DAY.getValue(),
-                            NoteRepeatTypes.WEEK.getValue(),
-                            String.valueOf(DateHelper.getDayOfWeekNumber(date)),
-                            NoteRepeatTypes.ANY.getValue(),
-                            String.valueOf(date.getTimeInMillis()),
-                            Integer.toString(NoteTypes.Diary.getValue())
-                    }
-            );
+            params = new String[] {
+                    NoteActions.DELETE.name(),
+                    String.valueOf(date.getTimeInMillis()),
+                    String.valueOf(date.getTimeInMillis()),
+                    NoteRepeatTypes.DAY.getValue(),
+                    NoteRepeatTypes.WEEK.getValue(),
+                    String.valueOf(DateHelper.getDayOfWeekNumber(date)),
+                    NoteRepeatTypes.ANY.getValue(),
+                    String.valueOf(date.getTimeInMillis()),
+                    Integer.toString(NoteTypes.Diary.getValue())
+            };
         } else {
-            String sql = "SELECT id, tag, isFinished, title, contentItems, manualOrderIndex, forkFrom, date, mode"
+            sql = "SELECT id, tag, isFinished, title, contentItems, manualOrderIndex, forkFrom, date, mode"
                     + " FROM Notes"
                     + " WHERE"
                     + " lastAction != ?"
                     + " AND mode = ?;";
 
-            cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(
-                    sql,
-                    new String[] {NoteActions.DELETE.name(), Integer.toString(NoteTypes.Note.getValue())}
-            );
+            params = new String[] {NoteActions.DELETE.name(), Integer.toString(NoteTypes.Note.getValue())};
         }
 
-        if (cursor.moveToFirst()) {
-            do {
-                notes.add(getNoteFromCursor(cursor));
-            }
-            while (cursor.moveToNext());
-        }
-        cursor.close();
+        ArrayList<Note> notes = queryNotes(sql, params);
 
         if (settings.sortType == SortType.NOTE_TIME) {
             Collections.sort(notes, new SortByNoteTime(settings.sortDirection));
@@ -177,28 +180,16 @@ public class NoteRepository {
         return notes;
     }
 
-    private Note getNote(int id) {
-        return getNotes("n.id = ?", new String[] {Integer.toString(id)}).get(0);
-    }
-
-    public ArrayList<Note> getNotes(String conditions, String[] conditionsValues) {
+    public ArrayList<Note> getNotes(String where, String[] params) {
         String sql = "SELECT " + noteSQLFields
                 + " FROM Notes n"
-                + " WHERE " + conditions + ";";
+                + " WHERE " + where + ";";
 
-        Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(sql, conditionsValues);
+        return queryNotes(sql, params);
+    }
 
-        ArrayList<Note> notes = new ArrayList<>();
-
-        if (cursor.moveToFirst()) {
-            do {
-                notes.add(getNoteFromCursor(cursor));
-            }
-            while (cursor.moveToNext());
-        }
-        cursor.close();
-
-        return notes;
+    public Note getNote(int id) {
+        return queryNotes("id = ?", new String[] {Integer.toString(id)}).get(0);
     }
 
     private Note getNoteFromCursor(Cursor cursor) {
@@ -234,10 +225,9 @@ public class NoteRepository {
 
         String contentItemsJson = cursor.getString(cursor.getColumnIndex("contentItems"));
         ArrayList<NoteContentItem> contentItems = new ArrayList<NoteContentItem>();
-        Gson gson = new Gson();
-        JsonParser parser = new JsonParser();
-        if (contentItemsJson.length() > 0) {
-            JsonArray array = parser.parse(contentItemsJson).getAsJsonArray();
+        if (!contentItemsJson.isEmpty()) {
+            Gson gson = new Gson();
+            JsonArray array = JsonParser.parseString(contentItemsJson).getAsJsonArray();
             for (int i = 0; i < array.size(); i++) {
                 NoteContentItem contentField = null;
 
