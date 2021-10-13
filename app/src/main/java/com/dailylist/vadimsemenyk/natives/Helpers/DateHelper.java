@@ -4,6 +4,13 @@ import java.util.Calendar;
 import java.util.TimeZone;
 
 public class DateHelper {
+    public static Calendar convertFromUTCToLocal(Long utcDateTimeMS) {
+        Calendar utcDateTime = Calendar.getInstance();
+        utcDateTime.setTimeInMillis(utcDateTimeMS);
+
+        return convertFromUTCToLocal(utcDateTime);
+    }
+
     public static Calendar convertFromUTCToLocal(Calendar utcDateTime) {
         int utcYear = utcDateTime.get(Calendar.YEAR);
         int utcMonth = utcDateTime.get(Calendar.MONTH);
@@ -32,10 +39,23 @@ public class DateHelper {
     }
 
     public static Calendar startOfDay(Calendar dateTime) {
-        dateTime.set(Calendar.HOUR_OF_DAY, 0);
-        dateTime.set(Calendar.MINUTE, 0);
-        dateTime.set(Calendar.SECOND, 0);
+        return startOf(dateTime, "day");
+    }
+
+    public static Calendar startOf(Calendar dateTime, String precision) {
         dateTime.set(Calendar.MILLISECOND, 0);
+        dateTime.set(Calendar.SECOND, 0);
+
+        if (precision.equals("minute")) {
+            return dateTime;
+        }
+
+        dateTime.set(Calendar.MINUTE, 0);
+        dateTime.set(Calendar.HOUR_OF_DAY, 0);
+
+        if (precision.equals("day")) {
+            return dateTime;
+        }
 
         return dateTime;
     }
@@ -103,6 +123,16 @@ public class DateHelper {
         }
 
         return dayOfWeek;
+    }
+
+    static public Calendar getDateTime(Long dateMS, Long timeMS) {
+        Calendar date = Calendar.getInstance();
+        Calendar time = Calendar.getInstance();
+
+        date.setTimeInMillis(dateMS);
+        time.setTimeInMillis(timeMS);
+
+        return getDateTime(date, time);
     }
 
     static public Calendar getDateTime(Calendar date, Calendar time) {

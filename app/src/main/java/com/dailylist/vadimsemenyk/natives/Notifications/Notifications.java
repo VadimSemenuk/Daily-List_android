@@ -13,9 +13,13 @@ import android.support.v4.app.NotificationCompat;
 
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.App;
+import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
+import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.google.gson.Gson;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 
 public class Notifications {
     static String CHANNEL_ID = "com.dailylist.vadimsemenyk.notification";
@@ -34,8 +38,7 @@ public class Notifications {
     static public void schedule(NotificationOptions options) {
         saveOptions(options);
 
-        Calendar triggerDateTime = Calendar.getInstance();
-        triggerDateTime.add(Calendar.SECOND, 5);
+        Long triggerDateTimeMS = getTriggerDateTime(options);
 
         Intent intent = new Intent(App.getAppContext(), NotificationsReceiver.class);
         intent.setAction(getShowActionName(options.id));
@@ -45,14 +48,83 @@ public class Notifications {
         AlarmManager alarmManager = (AlarmManager) App.getAppContext().getSystemService(Context.ALARM_SERVICE);
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerDateTime.getTimeInMillis(), pendingIntent);
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerDateTimeMS, pendingIntent);
             } else {
-                alarmManager.setExact(AlarmManager.RTC, triggerDateTime.getTimeInMillis(), pendingIntent);
+                alarmManager.setExact(AlarmManager.RTC, triggerDateTimeMS, pendingIntent);
             }
         } catch (Exception ignore) {
             // Samsung devices have a known bug where a 500 alarms limit
             // can crash the app
         }
+    }
+
+    static private Long getTriggerDateTime(NotificationOptions options) {
+        if (options.repeatType == NoteRepeatTypes.NO_REPEAT) {
+            return DateHelper.getDateTime(DateHelper.convertFromUTCToLocal(options.triggerDateUTCMS), DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS)).getTimeInMillis();
+        } else {
+            Calendar getRepeatNextTriggerDate = getRepeatNextTriggerDate(options);
+            if (getRepeatNextTriggerDate == null) {
+                return null;
+            }
+            return DateHelper.getDateTime(getRepeatNextTriggerDate, DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS)).getTimeInMillis();
+        }
+    }
+
+    static private Calendar getRepeatNextTriggerDate(NotificationOptions options) {
+        boolean isCurrentTimeAfterTriggerTime = DateHelper.startOf(Calendar.getInstance(), "minute").after(DateHelper.startOf(DateHelper.getDateTime(Calendar.getInstance(), DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS)), "minute"));
+
+        if (options.repeatType == NoteRepeatTypes.DAY) {
+            Calendar resultDateTime = DateHelper.startOf(Calendar.getInstance(), "day");
+
+            if (isCurrentTimeAfterTriggerTime) {
+                resultDateTime.add(Calendar.DATE, 1);
+            }
+
+            return resultDateTime;
+        } else if (options.repeatType == NoteRepeatTypes.WEEK) {
+            int currentWeekDay = DateHelper.getDayOfWeekNumber(Calendar.getInstance());
+            ArrayList<Long> repeatValues = new ArrayList<>(options.repeatValues);
+
+            Collections.sort(repeatValues);
+
+            Long result = repeatValues.get(0);
+            for (Long repeatValue : repeatValues) {
+                if (isCurrentTimeAfterTriggerTime ? (repeatValue > currentWeekDay) : (repeatValue >= currentWeekDay)) {
+                    result = repeatValue;
+                    break;
+                }
+            }
+
+            Calendar resultDateTime = DateHelper.startOf(Calendar.getInstance(), "day");
+            resultDateTime.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
+
+            return resultDateTime;
+        } else if (options.repeatType == NoteRepeatTypes.ANY) {
+            Long currentDateTimeMS = DateHelper.startOf(Calendar.getInstance(), "day").getTimeInMillis();
+
+            Long result = null;
+            for (Long repeatValueUTC : options.repeatValues) {
+                Long repeatValue = DateHelper.convertFromUTCToLocal(repeatValueUTC).getTimeInMillis();
+
+                if (isCurrentTimeAfterTriggerTime ? (repeatValue > currentDateTimeMS) : (repeatValue >= currentDateTimeMS)) {
+                    result = repeatValue;
+                    break;
+                }
+            }
+
+            if (result == null) {
+                return null;
+            }
+
+            Calendar resultDateTime = Calendar.getInstance();
+            resultDateTime.setTimeInMillis(result);
+
+            return resultDateTime;
+        }
+
+        // TODO: if current minute schedule for 59 seconds
+
+        return null;
     }
 
     static public void cancel(int id) {
@@ -95,7 +167,7 @@ public class Notifications {
                 .setContentTitle(options.title)
                 .setContentText(options.text)
                 .setTicker(options.text)
-                .setWhen(options.msWhen);
+                .setWhen(Calendar.getInstance().getTimeInMillis());
 
         return builder.build();
     }
