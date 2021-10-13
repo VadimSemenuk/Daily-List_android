@@ -11,6 +11,8 @@ import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
+import java.util.Calendar;
+
 public class NotificationsReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -27,19 +29,22 @@ public class NotificationsReceiver extends BroadcastReceiver {
                 return;
             }
 
-            NotificationOptions options = Notifications.getNotificationOptions(id);
+            NotificationOptions options = Notifications.getOptions(id);
 
             if (options == null) {
                 return;
             }
 
             if (options.repeatType != NoteRepeatTypes.NO_REPEAT) {
-                Note forkedNote = NoteRepository.getInstance().getNotes("forkFrom = ?", new String[] {Integer.toString(options.id)}).get(0);
+                Note forkedNote = NoteRepository.getInstance().getNotes(
+                    "forkFrom = ? and repeatItemDate = ?",
+                    new String[] {Integer.toString(options.id), Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(Calendar.getInstance(), "day")).getTimeInMillis())}
+                ).get(0);
 
                 options.id = forkedNote.id;
 
                 if (forkedNote != null) {
-                    if (forkedNote.date.equals(forkedNote.repeatItemDate) && forkedNote.startDateTime.equals(DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS))) {
+                    if (forkedNote.date.equals(forkedNote.repeatItemDate) && forkedNote.startDateTime.equals(options.triggerTime)) {
                         options.title = forkedNote.title;
                         options.text = getNotificationText(forkedNote);
                     } else {

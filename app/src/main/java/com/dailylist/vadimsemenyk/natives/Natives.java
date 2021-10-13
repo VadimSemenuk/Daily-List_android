@@ -2,10 +2,12 @@ package com.dailylist.vadimsemenyk.natives;
 
 import android.app.Activity;
 
+import com.dailylist.vadimsemenyk.natives.Notifications.DateTimeJsonHelper;
 import com.dailylist.vadimsemenyk.natives.Notifications.NotificationOptions;
 import com.dailylist.vadimsemenyk.natives.Notifications.Notifications;
 import com.dailylist.vadimsemenyk.natives.Widget.WidgetProvider;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -16,6 +18,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
+import java.util.Calendar;
 import java.util.HashMap;
 
 public class Natives extends CordovaPlugin {
@@ -62,17 +65,12 @@ public class Natives extends CordovaPlugin {
     private void scheduleNotification(String optionsJSON) {
         NotificationOptions options = null;
 
-        Gson gson = new Gson();
-        if (optionsJSON != null && optionsJSON.length() > 0) {
-            options = gson.fromJson(optionsJSON, NotificationOptions.class);
-        }
+        Gson gson = new GsonBuilder()
+                .registerTypeHierarchyAdapter(Calendar.class, new DateTimeJsonHelper.DateTimeDeserializer())
+                .create();
+        options = gson.fromJson(optionsJSON, NotificationOptions.class);
 
-        if (options == null) {
-            return;
-        }
-
-        Notifications.prepareNotificationOptions(options);
-
+        Notifications.saveOptions(options);
         Notifications.schedule(options);
     }
 

@@ -16,10 +16,14 @@ import com.dailylist.vadimsemenyk.natives.App;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.TimeZone;
 
 public class Notifications {
     static String CHANNEL_ID = "com.dailylist.vadimsemenyk.notification";
@@ -38,8 +42,6 @@ public class Notifications {
     // schedule notification
 
     static public void schedule(NotificationOptions options) {
-        saveOptions(options);
-
         Long triggerDateTimeMS = getTriggerDateTime(options);
 
         Intent intent = new Intent(App.getAppContext(), NotificationsReceiver.class);
@@ -62,18 +64,18 @@ public class Notifications {
 
     static private Long getTriggerDateTime(NotificationOptions options) {
         if (options.repeatType == NoteRepeatTypes.NO_REPEAT) {
-            return DateHelper.getDateTime(DateHelper.convertFromUTCToLocal(options.triggerDateUTCMS), DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS)).getTimeInMillis();
+            return DateHelper.getDateTime(options.triggerDate, options.triggerTime).getTimeInMillis();
         } else {
             Calendar getRepeatNextTriggerDate = getRepeatNextTriggerDate(options);
             if (getRepeatNextTriggerDate == null) {
                 return null;
             }
-            return DateHelper.getDateTime(getRepeatNextTriggerDate, DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS)).getTimeInMillis();
+            return DateHelper.getDateTime(getRepeatNextTriggerDate, options.triggerTime).getTimeInMillis();
         }
     }
 
     static private Calendar getRepeatNextTriggerDate(NotificationOptions options) {
-        boolean isCurrentTimeBeforeTriggerTime = DateHelper.getTime(Calendar.getInstance()).before(DateHelper.getCalendar(options.triggerTimeUTCMS));
+        boolean isCurrentTimeBeforeTriggerTime = DateHelper.getTime(Calendar.getInstance()).before(options.triggerTime);
 
         if (options.repeatType == NoteRepeatTypes.DAY) {
             Calendar resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
@@ -139,34 +141,43 @@ public class Notifications {
         return ACTION_SHOW + "_" + id;
     }
 
-    static public NotificationOptions getNotificationOptions(int id) {
+    static public NotificationOptions getOptions(int id) {
         SharedPreferences sp = App.getAppContext().getSharedPreferences(Notifications.SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
         String optionsJSON = sp.getString(Integer.toString(id), null);
 
-        NotificationOptions options = null;
-        Gson gson = new Gson();
-        if (optionsJSON != null && optionsJSON.length() > 0) {
-            options = gson.fromJson(optionsJSON, NotificationOptions.class);
+        if (optionsJSON == null || optionsJSON.length() == 0) {
+            return null;
         }
 
-        prepareNotificationOptions(options);
+        Gson gson = new GsonBuilder()
+                .registerTypeHierarchyAdapter(Calendar.class, new DateTimeJsonHelper.DateTimeDeserializer())
+                .create();
+        NotificationOptions options = gson.fromJson(optionsJSON, NotificationOptions.class);
 
-        return options;
-    }
-
-    static public NotificationOptions prepareNotificationOptions(NotificationOptions options) {
-        options.triggerTime = DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS);
+        options.triggerTime.setTimeZone(TimeZone.getTimeZone("UTC"));
+        options.triggerTime = DateHelper.convertFromUTCToLocal(options.triggerTime);
 
         if (options.triggerDate != null) {
-            options.triggerDate = DateHelper.convertFromUTCToLocal(options.triggerDateUTCMS);
+            options.triggerDate.setTimeZone(TimeZone.getTimeZone("UTC"));
+            options.triggerDate = DateHelper.convertFromUTCToLocal(options.triggerTime);
         }
 
         return options;
     }
 
     static public void saveOptions(NotificationOptions options) {
-        Gson gson = new Gson();
-        String optionsJSON = gson.toJson(options);
+        Gson gson = new GsonBuilder()
+                .registerTypeHierarchyAdapter(Calendar.class, new DateTimeJsonHelper.DateTimeSerializer())
+                .create();
+
+        String _optionsJSON = gson.toJson(options);
+
+        JsonObject json = (JsonObject) JsonParser.parseString(_optionsJSON);
+        json.addProperty("triggerTime", DateHelper.convertFromLocalToUTC(options.triggerTime).getTimeInMillis());
+        if (options.triggerDate != null) {
+            json.addProperty("triggerDate", DateHelper.convertFromLocalToUTC(options.triggerDate).getTimeInMillis());
+        }
+        String optionsJSON = json.toString();
 
         SharedPreferences sp = App.getAppContext().getSharedPreferences(SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
         sp.edit().putString(Integer.toString(options.id), optionsJSON).apply();
@@ -209,7 +220,7 @@ public class Notifications {
                 .setContentTitle(options.title)
                 .setContentText(options.text)
                 .setTicker(options.text)
-                .setWhen(DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS).getTimeInMillis());
+                .setWhen(options.triggerTime.getTimeInMillis());
 
         return builder.build();
     }

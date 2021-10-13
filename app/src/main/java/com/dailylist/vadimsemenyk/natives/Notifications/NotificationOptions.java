@@ -12,11 +12,9 @@ public class NotificationOptions {
     public String title;
     public String text;
     public NoteRepeatTypes repeatType;
-    public Long triggerTimeUTCMS;
     public Calendar triggerTime;
 
     // no-repeat
-    public Long triggerDateUTCMS;
     public Calendar triggerDate;
 
     // repeat

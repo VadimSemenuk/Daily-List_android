@@ -23,6 +23,10 @@ public class DateHelper {
         return dateTimeLocal;
     }
 
+    public static Calendar convertFromLocalToUTC(Long utcDateTimeMS) {
+        return DateHelper.convertFromLocalToUTC(DateHelper.getCalendar(utcDateTimeMS));
+    }
+
     public static Calendar convertFromLocalToUTC(Calendar localDateTime) {
         int year = localDateTime.get(Calendar.YEAR);
         int month = localDateTime.get(Calendar.MONTH);
