@@ -35,6 +35,8 @@ public class Notifications {
 
     public Notifications() { }
 
+    // schedule notification
+
     static public void schedule(NotificationOptions options) {
         saveOptions(options);
 
@@ -71,16 +73,16 @@ public class Notifications {
     }
 
     static private Calendar getRepeatNextTriggerDate(NotificationOptions options) {
-        boolean isCurrentTimeAfterTriggerTime = DateHelper.startOf(Calendar.getInstance(), "minute").after(DateHelper.startOf(DateHelper.getDateTime(Calendar.getInstance(), DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS)), "minute"));
+        boolean isCurrentTimeBeforeTriggerTime = DateHelper.getTime(Calendar.getInstance()).before(DateHelper.getCalendar(options.triggerTimeUTCMS));
 
         if (options.repeatType == NoteRepeatTypes.DAY) {
-            Calendar resultDateTime = DateHelper.startOf(Calendar.getInstance(), "day");
+            Calendar resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
 
-            if (isCurrentTimeAfterTriggerTime) {
-                resultDateTime.add(Calendar.DATE, 1);
+            if (!isCurrentTimeBeforeTriggerTime) {
+                resultDate.add(Calendar.DATE, 1);
             }
 
-            return resultDateTime;
+            return resultDate;
         } else if (options.repeatType == NoteRepeatTypes.WEEK) {
             int currentWeekDay = DateHelper.getDayOfWeekNumber(Calendar.getInstance());
             ArrayList<Long> repeatValues = new ArrayList<>(options.repeatValues);
@@ -89,24 +91,24 @@ public class Notifications {
 
             Long result = repeatValues.get(0);
             for (Long repeatValue : repeatValues) {
-                if (isCurrentTimeAfterTriggerTime ? (repeatValue > currentWeekDay) : (repeatValue >= currentWeekDay)) {
+                if (!isCurrentTimeBeforeTriggerTime ? (repeatValue > currentWeekDay) : (repeatValue >= currentWeekDay)) {
                     result = repeatValue;
                     break;
                 }
             }
 
-            Calendar resultDateTime = DateHelper.startOf(Calendar.getInstance(), "day");
-            resultDateTime.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
+            Calendar resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
+            resultDate.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
 
-            return resultDateTime;
+            return resultDate;
         } else if (options.repeatType == NoteRepeatTypes.ANY) {
-            Long currentDateTimeMS = DateHelper.startOf(Calendar.getInstance(), "day").getTimeInMillis();
+            Long currentDateMS = DateHelper.startOf(Calendar.getInstance(), "day").getTimeInMillis();
 
             Long result = null;
             for (Long repeatValueUTC : options.repeatValues) {
                 Long repeatValue = DateHelper.convertFromUTCToLocal(repeatValueUTC).getTimeInMillis();
 
-                if (isCurrentTimeAfterTriggerTime ? (repeatValue > currentDateTimeMS) : (repeatValue >= currentDateTimeMS)) {
+                if (!isCurrentTimeBeforeTriggerTime ? (repeatValue > currentDateMS) : (repeatValue >= currentDateMS)) {
                     result = repeatValue;
                     break;
                 }
@@ -116,10 +118,7 @@ public class Notifications {
                 return null;
             }
 
-            Calendar resultDateTime = Calendar.getInstance();
-            resultDateTime.setTimeInMillis(result);
-
-            return resultDateTime;
+            return DateHelper.getCalendar(result);
         }
 
         // TODO: if current minute schedule for 59 seconds
@@ -140,6 +139,46 @@ public class Notifications {
         return ACTION_SHOW + "_" + id;
     }
 
+    static public NotificationOptions getNotificationOptions(int id) {
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(Notifications.SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
+        String optionsJSON = sp.getString(Integer.toString(id), null);
+
+        NotificationOptions options = null;
+        Gson gson = new Gson();
+        if (optionsJSON != null && optionsJSON.length() > 0) {
+            options = gson.fromJson(optionsJSON, NotificationOptions.class);
+        }
+
+        prepareNotificationOptions(options);
+
+        return options;
+    }
+
+    static public NotificationOptions prepareNotificationOptions(NotificationOptions options) {
+        options.triggerTime = DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS);
+
+        if (options.triggerDate != null) {
+            options.triggerDate = DateHelper.convertFromUTCToLocal(options.triggerDateUTCMS);
+        }
+
+        return options;
+    }
+
+    static public void saveOptions(NotificationOptions options) {
+        Gson gson = new Gson();
+        String optionsJSON = gson.toJson(options);
+
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
+        sp.edit().putString(Integer.toString(options.id), optionsJSON).apply();
+    }
+
+    static public void clearOptions(int id) {
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
+        sp.edit().remove(Integer.toString(id)).apply();
+    }
+
+    // show notification
+
     static public void show(int id, Notification notification) {
         NotificationManager notificationManager = (NotificationManager) App.getAppContext().getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(id, notification);
@@ -150,9 +189,12 @@ public class Notifications {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(App.getAppContext(), CHANNEL_ID);
 
+        Bundle extras = new Bundle();
+        extras.putInt(EXTRA_ID, options.id);
+
         builder
                 .setDefaults(NotificationCompat.DEFAULT_VIBRATE | NotificationCompat.DEFAULT_SOUND | NotificationCompat.DEFAULT_LIGHTS)
-                .setExtras(getExtras(options))
+                .setExtras(extras)
                 .setOnlyAlertOnce(false)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
@@ -167,7 +209,7 @@ public class Notifications {
                 .setContentTitle(options.title)
                 .setContentText(options.text)
                 .setTicker(options.text)
-                .setWhen(Calendar.getInstance().getTimeInMillis());
+                .setWhen(DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS).getTimeInMillis());
 
         return builder.build();
     }
@@ -179,14 +221,6 @@ public class Notifications {
         return PendingIntent.getService(App.getAppContext(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
     }
 
-    static private Bundle getExtras(NotificationOptions options) {
-        Bundle extras = new Bundle();
-
-        extras.putInt(EXTRA_ID, options.id);
-
-        return extras;
-    }
-
     static private void createDefaultChannel() {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
             return;
@@ -196,18 +230,5 @@ public class Notifications {
 
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
         notificationManager.createNotificationChannel(channel);
-    }
-
-    static private void saveOptions(NotificationOptions options) {
-        Gson gson = new Gson();
-        String optionsJSON = gson.toJson(options);
-
-        SharedPreferences sp = App.getAppContext().getSharedPreferences(SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
-        sp.edit().putString(Integer.toString(options.id), optionsJSON).apply();
-    }
-
-    static public void clearOptions(int id) {
-        SharedPreferences sp = App.getAppContext().getSharedPreferences(SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
-        sp.edit().remove(Integer.toString(id)).apply();
     }
 }

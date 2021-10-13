@@ -4,10 +4,12 @@ import android.app.Notification;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 
-import com.google.gson.Gson;
+import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
+import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
+import com.dailylist.vadimsemenyk.natives.Models.Note;
+import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
 public class NotificationsReceiver extends BroadcastReceiver {
     @Override
@@ -25,22 +27,39 @@ public class NotificationsReceiver extends BroadcastReceiver {
                 return;
             }
 
-            SharedPreferences sp = context.getSharedPreferences(Notifications.SP_NOTIFICATION_OPTIONS, Context.MODE_PRIVATE);
-            String optionsJSON = sp.getString(Integer.toString(id), null);
-
-            NotificationOptions options = null;
-            Gson gson = new Gson();
-            if (optionsJSON != null && optionsJSON.length() > 0) {
-                options = gson.fromJson(optionsJSON, NotificationOptions.class);
-            }
+            NotificationOptions options = Notifications.getNotificationOptions(id);
 
             if (options == null) {
                 return;
             }
 
+            if (options.repeatType != NoteRepeatTypes.NO_REPEAT) {
+                Note forkedNote = NoteRepository.getInstance().getNotes("forkFrom = ?", new String[] {Integer.toString(options.id)}).get(0);
+
+                options.id = forkedNote.id;
+
+                if (forkedNote != null) {
+                    if (forkedNote.date.equals(forkedNote.repeatItemDate) && forkedNote.startDateTime.equals(DateHelper.convertFromUTCToLocal(options.triggerTimeUTCMS))) {
+                        options.title = forkedNote.title;
+                        options.text = getNotificationText(forkedNote);
+                    } else {
+                        return;
+                    }
+                }
+            }
+
             Notification notification = Notifications.build(options);
             Notifications.show(options.id, notification);
-            Notifications.clearOptions(options.id);
+
+            if (options.repeatType == NoteRepeatTypes.NO_REPEAT) {
+                Notifications.clearOptions(options.id);
+            } else {
+                Notifications.schedule(options);
+            }
         }
+    }
+
+    private String getNotificationText(Note note) {
+        return "test123";
     }
 }

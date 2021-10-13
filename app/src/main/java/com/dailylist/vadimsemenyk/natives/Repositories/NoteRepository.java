@@ -185,7 +185,7 @@ public class NoteRepository {
         return getNotes("n.id = ?", new String[] {Integer.toString(id)}).get(0);
     }
 
-    private ArrayList<Note> getNotes(String conditions, String[] conditionsValues) {
+    public ArrayList<Note> getNotes(String conditions, String[] conditionsValues) {
         String sql = "SELECT " + noteSQLFields
                 + " FROM Notes n"
                 + " WHERE " + conditions + ";";

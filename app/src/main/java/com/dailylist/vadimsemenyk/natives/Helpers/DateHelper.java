@@ -1,14 +1,12 @@
 package com.dailylist.vadimsemenyk.natives.Helpers;
 
 import java.util.Calendar;
+import java.util.Date;
 import java.util.TimeZone;
 
 public class DateHelper {
     public static Calendar convertFromUTCToLocal(Long utcDateTimeMS) {
-        Calendar utcDateTime = Calendar.getInstance();
-        utcDateTime.setTimeInMillis(utcDateTimeMS);
-
-        return convertFromUTCToLocal(utcDateTime);
+        return DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(utcDateTimeMS));
     }
 
     public static Calendar convertFromUTCToLocal(Calendar utcDateTime) {
@@ -20,6 +18,7 @@ public class DateHelper {
 
         Calendar dateTimeLocal = Calendar.getInstance();
         dateTimeLocal.set(utcYear, utcMonth, utcDate, utcHour, utcMinute, 0);
+        dateTimeLocal.set(Calendar.MILLISECOND, 0);
 
         return dateTimeLocal;
     }
@@ -57,6 +56,38 @@ public class DateHelper {
             return dateTime;
         }
 
+        return dateTime;
+    }
+
+    static public Calendar getDateTime(Calendar date, Calendar time) {
+        Calendar result = (Calendar) date.clone();
+
+        result.set(Calendar.HOUR_OF_DAY, time.get(Calendar.HOUR_OF_DAY));
+        result.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
+        result.set(Calendar.SECOND, 0);
+        result.set(Calendar.MILLISECOND, 0);
+
+        return result;
+    }
+
+    static public Calendar getTime(Calendar dateTime) {
+        Calendar time = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        time.setTimeInMillis(0);
+        time = convertFromUTCToLocal(time);
+
+        time.set(Calendar.HOUR_OF_DAY, dateTime.get(Calendar.HOUR_OF_DAY));
+        time.set(Calendar.MINUTE, dateTime.get(Calendar.MINUTE));
+
+        return time;
+    }
+
+    static public Calendar getCalendar(int value) {
+        return getCalendar(Long.valueOf(value));
+    }
+
+    static public Calendar getCalendar(Long dateTimeMS) {
+        Calendar dateTime = Calendar.getInstance();
+        dateTime.setTimeInMillis(dateTimeMS);
         return dateTime;
     }
 
@@ -123,26 +154,5 @@ public class DateHelper {
         }
 
         return dayOfWeek;
-    }
-
-    static public Calendar getDateTime(Long dateMS, Long timeMS) {
-        Calendar date = Calendar.getInstance();
-        Calendar time = Calendar.getInstance();
-
-        date.setTimeInMillis(dateMS);
-        time.setTimeInMillis(timeMS);
-
-        return getDateTime(date, time);
-    }
-
-    static public Calendar getDateTime(Calendar date, Calendar time) {
-        Calendar result = (Calendar) date.clone();
-
-        result.set(Calendar.HOUR_OF_DAY, time.get(Calendar.HOUR_OF_DAY));
-        result.set(Calendar.MINUTE, time.get(Calendar.MINUTE));
-        result.set(Calendar.SECOND, time.get(Calendar.SECOND));
-        result.set(Calendar.MILLISECOND, time.get(Calendar.MILLISECOND));
-
-        return result;
     }
 }

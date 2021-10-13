@@ -61,6 +61,7 @@ public class Natives extends CordovaPlugin {
 
     private void scheduleNotification(String optionsJSON) {
         NotificationOptions options = null;
+
         Gson gson = new Gson();
         if (optionsJSON != null && optionsJSON.length() > 0) {
             options = gson.fromJson(optionsJSON, NotificationOptions.class);
@@ -69,6 +70,8 @@ public class Natives extends CordovaPlugin {
         if (options == null) {
             return;
         }
+
+        Notifications.prepareNotificationOptions(options);
 
         Notifications.schedule(options);
     }
