@@ -151,8 +151,7 @@ public class WidgetListFactory implements RemoteViewsFactory {
         int _type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetID,  1);
         NoteTypes type = NoteTypes.valueOf(_type);
 
-        Calendar date = DateHelper.convertFromLocalToUTC(Calendar.getInstance());
-        DateHelper.startOfDay(date);
+        Calendar date = DateHelper.startOf(DateHelper.convertFromLocalToUTC(Calendar.getInstance()), "day");
 
         settings = SettingsRepository.getInstance().getSettings();
 

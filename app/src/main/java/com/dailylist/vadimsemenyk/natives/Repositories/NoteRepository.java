@@ -78,16 +78,12 @@ public class NoteRepository {
             int noteBSortValue = 0;
 
             if (noteA.startDateTime != null) {
-                Calendar msNoteAStartOfDay = Calendar.getInstance();
-                msNoteAStartOfDay.setTimeInMillis(noteA.startDateTime.getTimeInMillis());
-                DateHelper.startOfDay(msNoteAStartOfDay);
+                Calendar msNoteAStartOfDay = DateHelper.startOf(DateHelper.getCalendar(noteA.startDateTime.getTimeInMillis()), "day");
                 noteASortValue = (int) (noteA.startDateTime.getTimeInMillis() - msNoteAStartOfDay.getTimeInMillis());
             }
 
             if (noteB.startDateTime != null) {
-                Calendar msNoteBStartOfDay = Calendar.getInstance();
-                msNoteBStartOfDay.setTimeInMillis(noteB.startDateTime.getTimeInMillis());
-                DateHelper.startOfDay(msNoteBStartOfDay);
+                Calendar msNoteBStartOfDay = DateHelper.startOf(DateHelper.getCalendar(noteB.startDateTime.getTimeInMillis()), "day");
                 noteBSortValue = (int) (noteB.startDateTime.getTimeInMillis() - msNoteBStartOfDay.getTimeInMillis());
             }
 
@@ -214,30 +210,22 @@ public class NoteRepository {
 
         if (!cursor.isNull(cursor.getColumnIndex("startTime"))) {
             long _startDateTime = cursor.getLong(cursor.getColumnIndex("startTime"));
-            Calendar startDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            startDateTime.setTimeInMillis(_startDateTime);
-            note.startDateTime = DateHelper.convertFromUTCToLocal(startDateTime);
+            note.startDateTime = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_startDateTime, TimeZone.getTimeZone("UTC")));
         }
 
         if (!cursor.isNull(cursor.getColumnIndex("endTime"))) {
             long _endDateTime = cursor.getLong(cursor.getColumnIndex("endTime"));
-            Calendar endDateTime = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            endDateTime.setTimeInMillis(_endDateTime);
-            note.endDateTime = DateHelper.convertFromUTCToLocal(endDateTime);
+            note.endDateTime = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_endDateTime, TimeZone.getTimeZone("UTC")));
         }
 
         if (!cursor.isNull(cursor.getColumnIndex("date"))) {
             long _date = cursor.getLong(cursor.getColumnIndex("date"));
-            Calendar date = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            date.setTimeInMillis(_date);
-            note.date = DateHelper.convertFromUTCToLocal(date);
+            note.date = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_date, TimeZone.getTimeZone("UTC")));
         }
 
         if (!cursor.isNull(cursor.getColumnIndex("repeatItemDate"))) {
-            long _date = cursor.getLong(cursor.getColumnIndex("repeatItemDate"));
-            Calendar date = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-            date.setTimeInMillis(_date);
-            note.repeatItemDate = DateHelper.convertFromUTCToLocal(date);
+            long _repeatItemDate = cursor.getLong(cursor.getColumnIndex("repeatItemDate"));
+            note.repeatItemDate = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_repeatItemDate, TimeZone.getTimeZone("UTC")));
         }
 
         note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
@@ -285,7 +273,7 @@ public class NoteRepository {
     }
 
     public void moveNotFinishedNotesForToday() {
-        Calendar todayDateTime = DateHelper.convertFromLocalToUTC(DateHelper.startOfDay(Calendar.getInstance()));
+        Calendar todayDateTime = DateHelper.convertFromLocalToUTC(DateHelper.startOf(Calendar.getInstance(), "day"));
 
         String sql = "UPDATE Notes"
                 + " SET date = ?"
@@ -337,8 +325,7 @@ public class NoteRepository {
     private Integer formShadowToReal(int id) {
         Integer nextNoteId = null;
 
-        Calendar date = DateHelper.convertFromLocalToUTC(Calendar.getInstance());
-        DateHelper.startOfDay(date);
+        Calendar date = DateHelper.startOf(DateHelper.convertFromLocalToUTC(Calendar.getInstance()), "day");
 
         String insertSQL = "INSERT INTO Notes (title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, date, forkFrom, mode, manualOrderIndex, tags)"
                 + " SELECT title, startTime, endTime, isNotificationEnabled, tag, repeatType, contentItems, isFinished, ? AS date, ? AS forkFrom, mode, manualOrderIndex, tags"

@@ -41,10 +41,6 @@ public class DateHelper {
         return dateUTC;
     }
 
-    public static Calendar startOfDay(Calendar dateTime) {
-        return startOf(dateTime, "day");
-    }
-
     public static Calendar startOf(Calendar dateTime, String precision) {
         dateTime.set(Calendar.MILLISECOND, 0);
         dateTime.set(Calendar.SECOND, 0);
@@ -91,6 +87,12 @@ public class DateHelper {
 
     static public Calendar getCalendar(Long dateTimeMS) {
         Calendar dateTime = Calendar.getInstance();
+        dateTime.setTimeInMillis(dateTimeMS);
+        return dateTime;
+    }
+
+    static public Calendar getCalendar(Long dateTimeMS, TimeZone timezone) {
+        Calendar dateTime = Calendar.getInstance(timezone);
         dateTime.setTimeInMillis(dateTimeMS);
         return dateTime;
     }
