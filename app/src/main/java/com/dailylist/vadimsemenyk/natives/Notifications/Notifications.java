@@ -15,6 +15,7 @@ import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.App;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
+import com.dailylist.vadimsemenyk.natives.Helpers.SerializeHelper;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -42,7 +43,11 @@ public class Notifications {
     // schedule notification
 
     static public void schedule(NotificationOptions options) {
-        Long triggerDateTimeMS = getTriggerDateTime(options);
+        schedule(options, false);
+    }
+
+    static public void schedule(NotificationOptions options, boolean isRepeatReschedule) {
+        Long triggerDateTimeMS = getTriggerDateTime(options, isRepeatReschedule);
 
         Intent intent = new Intent(App.getAppContext(), NotificationsReceiver.class);
         intent.setAction(getShowActionName(options.id));
@@ -62,11 +67,11 @@ public class Notifications {
         }
     }
 
-    static private Long getTriggerDateTime(NotificationOptions options) {
+    static private Long getTriggerDateTime(NotificationOptions options, boolean isRepeatReschedule) {
         if (options.repeatType == NoteRepeatTypes.NO_REPEAT) {
             return DateHelper.getDateTime(options.triggerDate, options.triggerTime).getTimeInMillis();
         } else {
-            Calendar getRepeatNextTriggerDate = getRepeatNextTriggerDate(options);
+            Calendar getRepeatNextTriggerDate = getRepeatNextTriggerDate(options, isRepeatReschedule);
             if (getRepeatNextTriggerDate == null) {
                 return null;
             }
@@ -74,13 +79,14 @@ public class Notifications {
         }
     }
 
-    static private Calendar getRepeatNextTriggerDate(NotificationOptions options) {
-        boolean isCurrentTimeBeforeTriggerTime = DateHelper.getTime(Calendar.getInstance()).before(options.triggerTime);
+    static private Calendar getRepeatNextTriggerDate(NotificationOptions options, boolean isRepeatReschedule) {
+        boolean isCurrentTimeAfterTriggerTime = DateHelper.getTime(Calendar.getInstance()).after(options.triggerTime);
+        boolean isCurrentTimeEqualsTriggerTime = DateHelper.getTime(Calendar.getInstance()).equals(options.triggerTime);
 
         if (options.repeatType == NoteRepeatTypes.DAY) {
             Calendar resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
 
-            if (!isCurrentTimeBeforeTriggerTime) {
+            if (isCurrentTimeAfterTriggerTime || (isCurrentTimeEqualsTriggerTime && isRepeatReschedule)) {
                 resultDate.add(Calendar.DATE, 1);
             }
 
@@ -93,7 +99,10 @@ public class Notifications {
 
             Long result = repeatValues.get(0);
             for (Long repeatValue : repeatValues) {
-                if (!isCurrentTimeBeforeTriggerTime ? (repeatValue > currentWeekDay) : (repeatValue >= currentWeekDay)) {
+                if (
+                        isCurrentTimeAfterTriggerTime || (isCurrentTimeEqualsTriggerTime && isRepeatReschedule) ?
+                                (repeatValue > currentWeekDay) : (repeatValue >= currentWeekDay)
+                ) {
                     result = repeatValue;
                     break;
                 }
@@ -110,7 +119,10 @@ public class Notifications {
             for (Long repeatValueUTC : options.repeatValues) {
                 Long repeatValue = DateHelper.convertFromUTCToLocal(repeatValueUTC).getTimeInMillis();
 
-                if (!isCurrentTimeBeforeTriggerTime ? (repeatValue > currentDateMS) : (repeatValue >= currentDateMS)) {
+                if (
+                        isCurrentTimeAfterTriggerTime || (isCurrentTimeEqualsTriggerTime && isRepeatReschedule) ?
+                                (repeatValue > currentDateMS) : (repeatValue >= currentDateMS)
+                ) {
                     result = repeatValue;
                     break;
                 }
@@ -122,8 +134,6 @@ public class Notifications {
 
             return DateHelper.getCalendar(result);
         }
-
-        // TODO: if current minute schedule for 59 seconds
 
         return null;
     }
@@ -150,7 +160,7 @@ public class Notifications {
         }
 
         Gson gson = new GsonBuilder()
-                .registerTypeHierarchyAdapter(Calendar.class, new DateTimeJsonHelper.DateTimeDeserializer())
+                .registerTypeHierarchyAdapter(Calendar.class, new SerializeHelper.DateTimeDeserializer())
                 .create();
         NotificationOptions options = gson.fromJson(optionsJSON, NotificationOptions.class);
 
@@ -167,7 +177,7 @@ public class Notifications {
 
     static public void saveOptions(NotificationOptions options) {
         Gson gson = new GsonBuilder()
-                .registerTypeHierarchyAdapter(Calendar.class, new DateTimeJsonHelper.DateTimeSerializer())
+                .registerTypeHierarchyAdapter(Calendar.class, new SerializeHelper.DateTimeSerializer())
                 .create();
 
         String _optionsJSON = gson.toJson(options);
@@ -216,10 +226,9 @@ public class Notifications {
                 .setSmallIcon(R.mipmap.notification)
                 .addAction(new NotificationCompat.Action.Builder(android.R.drawable.screen_background_dark, App.getAppContext().getString(R.string.notification_finish_action), getActionPendingIntent(ACTION_FINISH, options.id)).build())
                 .setContentIntent(getActionPendingIntent(ACTION_OPEN_NOTE, options.id))
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(options.text))
-                .setContentTitle(options.title)
-                .setContentText(options.text)
-                .setTicker(options.text)
+                .setContentTitle(options.title.isEmpty() ? null : options.title)
+                .setContentText(options.text.isEmpty() ? null : options.text)
+                .setTicker(options.text.isEmpty() ? null : options.text)
                 .setWhen(options.triggerTime.getTimeInMillis());
 
         return builder.build();

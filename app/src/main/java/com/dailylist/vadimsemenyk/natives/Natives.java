@@ -2,7 +2,7 @@ package com.dailylist.vadimsemenyk.natives;
 
 import android.app.Activity;
 
-import com.dailylist.vadimsemenyk.natives.Notifications.DateTimeJsonHelper;
+import com.dailylist.vadimsemenyk.natives.Helpers.SerializeHelper;
 import com.dailylist.vadimsemenyk.natives.Notifications.NotificationOptions;
 import com.dailylist.vadimsemenyk.natives.Notifications.Notifications;
 import com.dailylist.vadimsemenyk.natives.Widget.WidgetProvider;
@@ -66,7 +66,7 @@ public class Natives extends CordovaPlugin {
         NotificationOptions options = null;
 
         Gson gson = new GsonBuilder()
-                .registerTypeHierarchyAdapter(Calendar.class, new DateTimeJsonHelper.DateTimeDeserializer())
+                .registerTypeHierarchyAdapter(Calendar.class, new SerializeHelper.DateTimeDeserializer())
                 .create();
         options = gson.fromJson(optionsJSON, NotificationOptions.class);
 

@@ -17,6 +17,8 @@ public class SettingsRepository {
     private SettingsRepository() {}
 
     public Settings getSettings() {
+        // TODO: check for null pointer exception
+
         Settings settings = new Settings();
 
         String sql = "SELECT sortFinBehaviour, sortType, sortDirection, lang, autoMoveNotFinishedNotes, password FROM Settings;";

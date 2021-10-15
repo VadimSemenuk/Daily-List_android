@@ -36,6 +36,8 @@ public class NotificationsReceiver extends BroadcastReceiver {
                 return;
             }
 
+            // TODO: test DB request with catch
+
             if (options.repeatType != NoteRepeatTypes.NO_REPEAT) {
                 ArrayList<Note> forkedNotes = NoteRepository.getInstance().getNotes(
                         "forkFrom = ? and repeatItemDate = ?",
@@ -47,14 +49,16 @@ public class NotificationsReceiver extends BroadcastReceiver {
                 if (forkedNotes.size() != 0) {
                     Note forkedNote = forkedNotes.get(0);
 
-                    options.id = forkedNote.id;
-
-                    if (forkedNote.date.equals(forkedNote.repeatItemDate) && forkedNote.startDateTime.equals(options.triggerTime)) {
-                        options.title = forkedNote.title;
-                        options.text = getNotificationText(forkedNote);
-                    } else {
+                    if (
+                            forkedNote.isFinished ||
+                            (!forkedNote.date.equals(forkedNote.repeatItemDate) || !forkedNote.startDateTime.equals(options.triggerTime))
+                    ) {
                         return;
                     }
+
+                    options.id = forkedNote.id;
+                    options.title = forkedNote.title;
+                    options.text = getNotificationText(forkedNote);
                 }
             }
 
@@ -64,7 +68,7 @@ public class NotificationsReceiver extends BroadcastReceiver {
             if (options.repeatType == NoteRepeatTypes.NO_REPEAT) {
                 Notifications.clearOptions(options.id);
             } else {
-                Notifications.schedule(options);
+                Notifications.schedule(options, true);
             }
         }
     }

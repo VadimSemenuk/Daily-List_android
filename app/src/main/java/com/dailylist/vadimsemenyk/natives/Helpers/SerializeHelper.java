@@ -1,4 +1,4 @@
-package com.dailylist.vadimsemenyk.natives.Notifications;
+package com.dailylist.vadimsemenyk.natives.Helpers;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -11,7 +11,7 @@ import com.google.gson.JsonSerializer;
 import java.lang.reflect.Type;
 import java.util.Calendar;
 
-public class DateTimeJsonHelper {
+public class SerializeHelper {
     static public class DateTimeSerializer implements JsonSerializer<Calendar> {
         @Override
         public JsonElement serialize(Calendar src, Type typeOfSrc, JsonSerializationContext context) {

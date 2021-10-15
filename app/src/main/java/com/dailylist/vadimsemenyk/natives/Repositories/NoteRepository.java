@@ -223,6 +223,7 @@ public class NoteRepository {
 
         note.title = cursor.getString(cursor.getColumnIndex("title"));
 
+        // TODO: check for null pointer exception
         String contentItemsJson = cursor.getString(cursor.getColumnIndex("contentItems"));
         ArrayList<NoteContentItem> contentItems = new ArrayList<NoteContentItem>();
         if (!contentItemsJson.isEmpty()) {
@@ -253,10 +254,16 @@ public class NoteRepository {
 
         note.repeatType = NoteRepeatTypes.valueOf(cursor.getString(cursor.getColumnIndex("repeatType")));
 
-        ArrayList<String> repeatValues = cursor.isNull(cursor.getColumnIndex("repeatValues")) ? null : new ArrayList<>(Arrays.asList(cursor.getString(cursor.getColumnIndex("repeatValues")).split(",")));
+        ArrayList<String> repeatValues = cursor.isNull(cursor.getColumnIndex("repeatValues")) ? new ArrayList<>() : new ArrayList<>(Arrays.asList(cursor.getString(cursor.getColumnIndex("repeatValues")).split(",")));
         note.repeatValues = new ArrayList<Long>();
         for (String repeatValue : repeatValues) {
             note.repeatValues.add(Long.parseLong(repeatValue));
+        }
+
+        if (note.repeatType == NoteRepeatTypes.ANY) {
+            for (int i = 0; i < note.repeatValues.size(); i++) {
+                note.repeatValues.set(i, DateHelper.convertFromUTCToLocal(note.repeatValues.get(i)).getTimeInMillis());
+            }
         }
 
         return note;
