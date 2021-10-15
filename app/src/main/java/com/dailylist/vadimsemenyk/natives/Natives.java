@@ -55,23 +55,15 @@ public class Natives extends CordovaPlugin {
             DayChangeHandler.scheduleDayChangeEvent(cordova.getContext());
             return true;
         } else if (action.equals("scheduleNotification")) {
-            scheduleNotification(args);
+            scheduleNotification(Integer.parseInt(args));
         } else if (action.equals("cancelNotification")) {
             Notifications.cancel(Integer.parseInt(args));
         }
         return false;
     }
 
-    private void scheduleNotification(String optionsJSON) {
-        NotificationOptions options = null;
-
-        Gson gson = new GsonBuilder()
-                .registerTypeHierarchyAdapter(Calendar.class, new SerializeHelper.DateTimeDeserializer())
-                .create();
-        options = gson.fromJson(optionsJSON, NotificationOptions.class);
-
-        Notifications.saveOptions(options);
-        Notifications.schedule(options);
+    private void scheduleNotification(int id) {
+        Notifications.schedule(id);
     }
 
     static boolean isAppRunning() {

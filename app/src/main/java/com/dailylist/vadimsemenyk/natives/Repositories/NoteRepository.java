@@ -1,5 +1,6 @@
 package com.dailylist.vadimsemenyk.natives.Repositories;
 
+import android.content.Context;
 import android.database.Cursor;
 
 import com.dailylist.vadimsemenyk.natives.DBHelper;
@@ -27,16 +28,19 @@ import java.util.Comparator;
 import java.util.TimeZone;
 
 public class NoteRepository {
-    public String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
+    static public String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
             + ", (select GROUP_CONCAT(nrv.value, ',') from NotesRepeatValues nrv where nrv.noteId = n.id OR nrv.noteId = n.forkFrom) as repeatValues";
 
-    private static final NoteRepository ourInstance = new NoteRepository();
+    static private NoteRepository instance = null;
 
-    public static NoteRepository getInstance() {
-        return ourInstance;
+    private NoteRepository() {}
+
+    static public NoteRepository getInstance() {
+        if (instance == null) {
+            instance = new NoteRepository();
+        }
+        return instance;
     }
-
-    private NoteRepository() { }
 
     static class SortByAddedTime implements Comparator<Object> {
         SortDirection direction;

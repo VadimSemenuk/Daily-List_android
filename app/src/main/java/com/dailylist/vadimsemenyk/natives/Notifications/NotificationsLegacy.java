@@ -1,6 +1,10 @@
 package com.dailylist.vadimsemenyk.natives.Notifications;
 
+import static android.os.Build.VERSION.SDK_INT;
+import static android.os.Build.VERSION_CODES.O;
+
 import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -20,6 +24,7 @@ import java.util.Set;
 public class NotificationsLegacy {
     static final String PREF_KEY_ID = "NOTIFICATION_ID";
     static final String PREF_KEY_PID = "NOTIFICATION_PID";
+    static final String CHANNEL_ID = "default-channel-id";
 
     static public void clearAll() {
         Set<String> ids = App.getAppContext().getSharedPreferences(PREF_KEY_ID, Context.MODE_PRIVATE).getAll().keySet();
@@ -40,6 +45,10 @@ public class NotificationsLegacy {
         }
 
         App.getAppContext().getSharedPreferences(PREF_KEY_ID, Context.MODE_PRIVATE).edit().clear().apply();
+
+        if (SDK_INT >= O) {
+            ((NotificationManager) App.getAppContext().getSystemService(Context.NOTIFICATION_SERVICE)).deleteNotificationChannel(CHANNEL_ID);
+        }
     }
 
     static public void scheduleNew() {
@@ -53,20 +62,7 @@ public class NotificationsLegacy {
         );
 
         for (Note note : notes) {
-            NotificationOptions options = new NotificationOptions();
-            options.id = note.id;
-            options.title = note.title;
-            options.text = getText(note);
-            options.repeatType = note.isShadow ? note.repeatType : NoteRepeatTypes.NO_REPEAT;
-            options.triggerTime = note.startDateTime;
-
-            if (note.isShadow) {
-                options.repeatValues = note.repeatValues;
-            } else {
-                options.triggerDate = note.date;
-            }
-
-            Notifications.schedule(options);
+            Notifications.schedule(note.id);
         }
     }
 

@@ -30,47 +30,57 @@ public class NotificationsReceiver extends BroadcastReceiver {
                 return;
             }
 
-            NotificationOptions options = Notifications.getOptions(id);
+            Note note = NoteRepository.getInstance().getNote(id);
 
-            if (options == null) {
-                return;
-            }
+            ArrayList<NotificationOptions> optionsList = new ArrayList<NotificationOptions>();
 
-            // TODO: test DB request with catch
-
-            if (options.repeatType != NoteRepeatTypes.NO_REPEAT) {
-                ArrayList<Note> forkedNotes = NoteRepository.getInstance().getNotes(
-                        "forkFrom = ? and repeatItemDate = ?",
+            if (note.repeatType == NoteRepeatTypes.NO_REPEAT) {
+                 optionsList.add(getNotificationOptions(note));
+            } else {
+                ArrayList<Note> repeatItemForkedNotes = NoteRepository.getInstance().getNotes(
+                        "forkFrom = ? AND repeatItemDate = ? AND startTime = ?",
                         new String[] {
-                                Integer.toString(options.id),
-                                Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(Calendar.getInstance(), "day")).getTimeInMillis())
+                                Integer.toString(note.id),
+                                Long.toString(note.date.getTimeInMillis()),
+                                Long.toString(note.startDateTime.getTimeInMillis()),
                         }
                 );
-                if (forkedNotes.size() != 0) {
-                    Note forkedNote = forkedNotes.get(0);
 
-                    if (
-                            forkedNote.isFinished ||
-                            (!forkedNote.date.equals(forkedNote.repeatItemDate) || !forkedNote.startDateTime.equals(options.triggerTime))
-                    ) {
-                        return;
+                ArrayList<Note> forkedNotes = NoteRepository.getInstance().getNotes(
+                        "forkFrom = ? AND date = ? AND startTime = ?",
+                        new String[] {
+                                Integer.toString(note.id),
+                                Long.toString(note.date.getTimeInMillis()),
+                                Long.toString(note.startDateTime.getTimeInMillis()),
+                        }
+                );
+
+                if (!forkedNotes.isEmpty()) {
+                    for (Note forkedNote : forkedNotes) {
+                        optionsList.add(getNotificationOptions(forkedNote));
                     }
-
-                    options.id = forkedNote.id;
-                    options.title = forkedNote.title;
-                    options.text = getNotificationText(forkedNote);
                 }
             }
 
-            Notification notification = Notifications.build(options);
-            Notifications.show(options.id, notification);
+            for (NotificationOptions options : optionsList) {
+                Notification notification = Notifications.build(options);
+                Notifications.show(options.id, notification);
+            }
 
-            if (options.repeatType == NoteRepeatTypes.NO_REPEAT) {
-                Notifications.clearOptions(options.id);
-            } else {
-                Notifications.schedule(options, true);
+            if (note.repeatType != NoteRepeatTypes.NO_REPEAT) {
+                Notifications.schedule(note.id, true);
             }
         }
+    }
+
+    private NotificationOptions getNotificationOptions(Note note) {
+        NotificationOptions options = new NotificationOptions();
+        options.id = note.id;
+        options.title = note.title;
+        options.text = getNotificationText(note);
+        options.triggerTime = note.startDateTime;
+
+        return options;
     }
 
     private String getNotificationText(Note note) {
