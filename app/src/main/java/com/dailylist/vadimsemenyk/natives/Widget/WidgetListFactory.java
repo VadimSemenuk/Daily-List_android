@@ -17,6 +17,7 @@ import android.widget.RemoteViewsService.RemoteViewsFactory;
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
+import com.dailylist.vadimsemenyk.natives.Helpers.Helpers;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemListItem;
@@ -114,7 +115,7 @@ public class WidgetListFactory implements RemoteViewsFactory {
                         || ((position != 0) && data.get(position).isFinished && !data.get(position - 1).isFinished)
                 )
         ) {
-            remoteView.setTextViewText(R.id.sublist_title, WidgetProvider.getLocalizedResources(context, new Locale(settings.lang)).getString(R.string.widget_list_finished_section));
+            remoteView.setTextViewText(R.id.sublist_title, Helpers.getLocalizedResources(new Locale(settings.lang)).getString(R.string.widget_list_finished_section));
             remoteView.setInt(R.id.sublist_title, "setVisibility", View.VISIBLE);
         } else {
             remoteView.setInt(R.id.sublist_title, "setVisibility", View.GONE);

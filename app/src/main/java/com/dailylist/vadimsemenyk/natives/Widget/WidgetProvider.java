@@ -156,7 +156,7 @@ public class WidgetProvider extends AppWidgetProvider {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy", new Locale(settings.lang));
         widgetView.setTextViewText(R.id.date, dateFormat.format(Calendar.getInstance().getTime()));
 
-        String empty_placeholder = getLocalizedResources(context, new Locale(settings.lang)).getString(settings.password == null ? R.string.widget_list_empty : R.string.widget_list_password);
+        String empty_placeholder = Helpers.getLocalizedResources(new Locale(settings.lang)).getString(settings.password == null ? R.string.widget_list_empty : R.string.widget_list_password);
         widgetView.setTextViewText(R.id.empty, empty_placeholder);
 
         setWidgetEvents(widgetView, context, id);
@@ -233,14 +233,6 @@ public class WidgetProvider extends AppWidgetProvider {
         ComponentName thisAppWidget = new ComponentName(context.getPackageName(), getClass().getName());
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         return appWidgetManager.getAppWidgetIds(thisAppWidget);
-    }
-
-    static Resources getLocalizedResources(Context context, Locale desiredLocale) {
-        Configuration conf = context.getResources().getConfiguration();
-        conf = new Configuration(conf);
-        conf.setLocale(desiredLocale);
-        Context localizedContext = context.createConfigurationContext(conf);
-        return localizedContext.getResources();
     }
 
     public static void updateWidgetRequest(Context context) {

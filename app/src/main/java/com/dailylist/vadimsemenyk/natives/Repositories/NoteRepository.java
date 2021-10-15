@@ -11,6 +11,7 @@ import com.dailylist.vadimsemenyk.natives.Enums.SortDirection;
 import com.dailylist.vadimsemenyk.natives.Enums.SortType;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemImage;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemListItem;
@@ -125,6 +126,85 @@ public class NoteRepository {
         return notes;
     }
 
+    private Note getNoteFromCursor(Cursor cursor) {
+        Note note = new Note();
+
+        note.id = cursor.getInt(cursor.getColumnIndex("id"));
+
+        note.colorTag = cursor.getString(cursor.getColumnIndex("tag"));
+
+        if (!cursor.isNull(cursor.getColumnIndex("startTime"))) {
+            long _startDateTime = cursor.getLong(cursor.getColumnIndex("startTime"));
+            note.startDateTime = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_startDateTime, TimeZone.getTimeZone("UTC")));
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("endTime"))) {
+            long _endDateTime = cursor.getLong(cursor.getColumnIndex("endTime"));
+            note.endDateTime = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_endDateTime, TimeZone.getTimeZone("UTC")));
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("date"))) {
+            long _date = cursor.getLong(cursor.getColumnIndex("date"));
+            note.date = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_date, TimeZone.getTimeZone("UTC")));
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("repeatItemDate"))) {
+            long _repeatItemDate = cursor.getLong(cursor.getColumnIndex("repeatItemDate"));
+            note.repeatItemDate = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_repeatItemDate, TimeZone.getTimeZone("UTC")));
+        }
+
+        note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
+
+        note.title = cursor.getString(cursor.getColumnIndex("title"));
+
+        // TODO: check for null pointer exception
+        String contentItemsJson = cursor.getString(cursor.getColumnIndex("contentItems"));
+        ArrayList<NoteContentItem> contentItems = new ArrayList<NoteContentItem>();
+        if (!contentItemsJson.isEmpty()) {
+            Gson gson = new Gson();
+            JsonArray array = JsonParser.parseString(contentItemsJson).getAsJsonArray();
+            for (int i = 0; i < array.size(); i++) {
+                NoteContentItem contentField = null;
+
+                if (array.get(i) instanceof JsonObject) {
+                    JsonObject obj = array.get(i).getAsJsonObject();
+                    String contentItemType = obj.get("type").getAsString();
+                    if (contentItemType.equals("listItem")) {
+                        contentField = gson.fromJson(array.get(i), NoteContentItemListItem.class);
+                    } else if (contentItemType.equals("text")) {
+                        contentField = gson.fromJson(array.get(i), NoteContentItemTextArea.class);
+                    } else if (contentItemType.equals("snapshot")) {
+                        contentField = gson.fromJson(array.get(i), NoteContentItemImage.class);
+                    }
+                    contentItems.add(contentField);
+                }
+            }
+        }
+        note.contentItems = contentItems;
+
+        note.manualOrderIndex = cursor.isNull(cursor.getColumnIndex("manualOrderIndex")) ? null : cursor.getInt(cursor.getColumnIndex("manualOrderIndex"));
+
+        note.forkFrom = cursor.isNull(cursor.getColumnIndex("forkFrom")) ? null : cursor.getInt(cursor.getColumnIndex("forkFrom"));
+
+        note.isShadow = cursor.isNull(cursor.getColumnIndex("date")) && (NoteTypes.valueOf(cursor.getInt(cursor.getColumnIndex("mode"))) == NoteTypes.Diary);
+
+        note.repeatType = NoteRepeatTypes.valueOf(cursor.getString(cursor.getColumnIndex("repeatType")));
+
+        ArrayList<String> repeatValues = cursor.isNull(cursor.getColumnIndex("repeatValues")) ? new ArrayList<>() : new ArrayList<>(Arrays.asList(cursor.getString(cursor.getColumnIndex("repeatValues")).split(",")));
+        note.repeatValues = new ArrayList<Long>();
+        for (String repeatValue : repeatValues) {
+            note.repeatValues.add(Long.parseLong(repeatValue));
+        }
+
+        if (note.repeatType == NoteRepeatTypes.ANY) {
+            for (int i = 0; i < note.repeatValues.size(); i++) {
+                note.repeatValues.set(i, DateHelper.convertFromUTCToLocal(note.repeatValues.get(i)).getTimeInMillis());
+            }
+        }
+
+        return note;
+    }
+
     public ArrayList<Note> getNotes(NoteTypes type, Calendar date, Settings settings) {
         String sql;
         String[] params;
@@ -194,83 +274,6 @@ public class NoteRepository {
 
     public Note getNote(int id) {
         return queryNotes("id = ?", new String[] {Integer.toString(id)}).get(0);
-    }
-
-    private Note getNoteFromCursor(Cursor cursor) {
-        Note note = new Note();
-
-        note.id = cursor.getInt(cursor.getColumnIndex("id"));
-
-        note.colorTag = cursor.getString(cursor.getColumnIndex("tag"));
-
-        if (!cursor.isNull(cursor.getColumnIndex("startTime"))) {
-            long _startDateTime = cursor.getLong(cursor.getColumnIndex("startTime"));
-            note.startDateTime = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_startDateTime, TimeZone.getTimeZone("UTC")));
-        }
-
-        if (!cursor.isNull(cursor.getColumnIndex("endTime"))) {
-            long _endDateTime = cursor.getLong(cursor.getColumnIndex("endTime"));
-            note.endDateTime = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_endDateTime, TimeZone.getTimeZone("UTC")));
-        }
-
-        if (!cursor.isNull(cursor.getColumnIndex("date"))) {
-            long _date = cursor.getLong(cursor.getColumnIndex("date"));
-            note.date = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_date, TimeZone.getTimeZone("UTC")));
-        }
-
-        if (!cursor.isNull(cursor.getColumnIndex("repeatItemDate"))) {
-            long _repeatItemDate = cursor.getLong(cursor.getColumnIndex("repeatItemDate"));
-            note.repeatItemDate = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_repeatItemDate, TimeZone.getTimeZone("UTC")));
-        }
-
-        note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
-
-        note.title = cursor.getString(cursor.getColumnIndex("title"));
-
-        // TODO: check for null pointer exception
-        String contentItemsJson = cursor.getString(cursor.getColumnIndex("contentItems"));
-        ArrayList<NoteContentItem> contentItems = new ArrayList<NoteContentItem>();
-        if (!contentItemsJson.isEmpty()) {
-            Gson gson = new Gson();
-            JsonArray array = JsonParser.parseString(contentItemsJson).getAsJsonArray();
-            for (int i = 0; i < array.size(); i++) {
-                NoteContentItem contentField = null;
-
-                if (array.get(i) instanceof JsonObject) {
-                    JsonObject obj = array.get(i).getAsJsonObject();
-                    String contentItemType = obj.get("type").getAsString();
-                    if (contentItemType.equals("listItem")) {
-                        contentField = gson.fromJson(array.get(i), NoteContentItemListItem.class);
-                    } else if (contentItemType.equals("text")) {
-                        contentField = gson.fromJson(array.get(i), NoteContentItemTextArea.class);
-                    }
-                    contentItems.add(contentField);
-                }
-            }
-        }
-        note.contentItems = contentItems;
-
-        note.manualOrderIndex = cursor.isNull(cursor.getColumnIndex("manualOrderIndex")) ? null : cursor.getInt(cursor.getColumnIndex("manualOrderIndex"));
-
-        note.forkFrom = cursor.isNull(cursor.getColumnIndex("forkFrom")) ? null : cursor.getInt(cursor.getColumnIndex("forkFrom"));
-
-        note.isShadow = cursor.isNull(cursor.getColumnIndex("date")) && (NoteTypes.valueOf(cursor.getInt(cursor.getColumnIndex("mode"))) == NoteTypes.Diary);
-
-        note.repeatType = NoteRepeatTypes.valueOf(cursor.getString(cursor.getColumnIndex("repeatType")));
-
-        ArrayList<String> repeatValues = cursor.isNull(cursor.getColumnIndex("repeatValues")) ? new ArrayList<>() : new ArrayList<>(Arrays.asList(cursor.getString(cursor.getColumnIndex("repeatValues")).split(",")));
-        note.repeatValues = new ArrayList<Long>();
-        for (String repeatValue : repeatValues) {
-            note.repeatValues.add(Long.parseLong(repeatValue));
-        }
-
-        if (note.repeatType == NoteRepeatTypes.ANY) {
-            for (int i = 0; i < note.repeatValues.size(); i++) {
-                note.repeatValues.set(i, DateHelper.convertFromUTCToLocal(note.repeatValues.get(i)).getTimeInMillis());
-            }
-        }
-
-        return note;
     }
 
     public void moveNotFinishedNotesForToday() {

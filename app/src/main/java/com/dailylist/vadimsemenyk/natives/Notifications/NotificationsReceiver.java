@@ -7,12 +7,10 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
-import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 
 public class NotificationsReceiver extends BroadcastReceiver {
     @Override
@@ -77,13 +75,9 @@ public class NotificationsReceiver extends BroadcastReceiver {
         NotificationOptions options = new NotificationOptions();
         options.id = note.id;
         options.title = note.title;
-        options.text = getNotificationText(note);
+        options.text = Notifications.getText(note);
         options.triggerTime = note.startDateTime;
 
         return options;
-    }
-
-    private String getNotificationText(Note note) {
-        return "test123";
     }
 }

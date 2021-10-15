@@ -9,12 +9,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
+import android.text.TextUtils;
 
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.App;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemImage;
+import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemTextArea;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
 import java.util.ArrayList;
@@ -222,5 +226,40 @@ public class Notifications {
 
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
         notificationManager.createNotificationChannel(channel);
+    }
+
+
+    static public String getText(Note note) {
+        String text = "";
+        if (!note.contentItems.isEmpty()) {
+            if (note.contentItems.get(0) instanceof NoteContentItemImage) {
+                text = "picture";
+            } else {
+                NoteContentItem firstNotEmptyTextContentItem = null;
+
+                for (NoteContentItem contentItem : note.contentItems) {
+                    if (contentItem.value.isEmpty()) {
+                        firstNotEmptyTextContentItem = contentItem;
+                        break;
+                    }
+                }
+
+                if (firstNotEmptyTextContentItem instanceof NoteContentItemTextArea) {
+                    text = firstNotEmptyTextContentItem.value;
+                } else {
+                    ArrayList<String> listItems = new ArrayList<String>();
+                    for (NoteContentItem contentItem : note.contentItems) {
+                        if (contentItem instanceof NoteContentItemTextArea) {
+                            listItems.add(contentItem.value);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    text = TextUtils.join("; -", listItems) + ";";
+                }
+            }
+        }
+        return text;
     }
 }
