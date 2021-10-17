@@ -1,12 +1,11 @@
 package com.dailylist.vadimsemenyk.natives.Helpers;
 
 import java.util.Calendar;
-import java.util.Date;
 import java.util.TimeZone;
 
 public class DateHelper {
     public static Calendar convertFromUTCToLocal(Long utcDateTimeMS) {
-        return DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(utcDateTimeMS));
+        return DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(utcDateTimeMS, TimeZone.getTimeZone("UTC")));
     }
 
     public static Calendar convertFromUTCToLocal(Calendar utcDateTime) {
@@ -71,9 +70,7 @@ public class DateHelper {
     }
 
     static public Calendar getTime(Calendar dateTime) {
-        Calendar time = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        time.setTimeInMillis(0);
-        time = convertFromUTCToLocal(time);
+        Calendar time = convertFromUTCToLocal(Long.valueOf(0));
 
         time.set(Calendar.HOUR_OF_DAY, dateTime.get(Calendar.HOUR_OF_DAY));
         time.set(Calendar.MINUTE, dateTime.get(Calendar.MINUTE));

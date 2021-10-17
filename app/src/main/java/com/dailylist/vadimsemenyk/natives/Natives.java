@@ -55,15 +55,11 @@ public class Natives extends CordovaPlugin {
             DayChangeHandler.scheduleDayChangeEvent(cordova.getContext());
             return true;
         } else if (action.equals("scheduleNotification")) {
-            scheduleNotification(Integer.parseInt(args));
+            Notifications.schedule(Integer.parseInt(args));
         } else if (action.equals("cancelNotification")) {
             Notifications.cancel(Integer.parseInt(args));
         }
         return false;
-    }
-
-    private void scheduleNotification(int id) {
-        Notifications.schedule(id);
     }
 
     static boolean isAppRunning() {
