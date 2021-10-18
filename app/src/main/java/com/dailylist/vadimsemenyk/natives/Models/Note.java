@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 
 public class Note implements Serializable {
+    // TODO: rename startDateTime to startTime, endDateTime to endTime
+
     public int id;
 
     public String colorTag;
@@ -22,6 +24,7 @@ public class Note implements Serializable {
     public ArrayList<Long> repeatValues;
     public Calendar repeatItemDate;
     public Calendar date;
+    public boolean isNotificationEnabled;
 
     public Note() {}
 }

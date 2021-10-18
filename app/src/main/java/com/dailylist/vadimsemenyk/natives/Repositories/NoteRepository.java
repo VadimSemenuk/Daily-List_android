@@ -29,7 +29,7 @@ import java.util.Comparator;
 import java.util.TimeZone;
 
 public class NoteRepository {
-    static public String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
+    static public String noteSQLFields = "id, title, contentItems, startTime, endTime, isNotificationEnabled, tag, isFinished, isNotificationEnabled, tags, manualOrderIndex, date, mode, repeatType, forkFrom, repeatItemDate"
             + ", (select GROUP_CONCAT(nrv.value, ',') from NotesRepeatValues nrv where nrv.noteId = n.id OR nrv.noteId = n.forkFrom) as repeatValues";
 
     static private NoteRepository instance = null;
@@ -154,6 +154,8 @@ public class NoteRepository {
         }
 
         note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
+
+        note.isNotificationEnabled = cursor.getInt(cursor.getColumnIndex("isNotificationEnabled")) == 1;
 
         note.title = cursor.getString(cursor.getColumnIndex("title"));
 

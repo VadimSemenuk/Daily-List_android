@@ -7,12 +7,14 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.App;
+import com.dailylist.vadimsemenyk.natives.DBHelper;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
@@ -24,6 +26,7 @@ import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 
 public class Notifications {
     static String CHANNEL_ID = "com.dailylist.vadimsemenyk.notification";
@@ -36,8 +39,6 @@ public class Notifications {
     static String EXTRA_ID = "id";
     static String EXTRA_TRIGGER_DATE = "trigger_date";
 
-    static String SP_NOTIFICATION_OPTIONS = "com.dailylist.vadimsemenyk.notification.options";
-
     public Notifications() { }
 
     // schedule notification
@@ -48,6 +49,10 @@ public class Notifications {
 
     static public void schedule(int id, boolean isRepeatReschedule) {
         Long triggerDateTimeMS = getTriggerDateTimeMS(id, isRepeatReschedule);
+
+        if (triggerDateTimeMS == null) {
+            return;
+        }
 
         Intent intent = new Intent(App.getAppContext(), NotificationsReceiver.class);
         intent.setAction(getShowActionName(id));
@@ -74,52 +79,124 @@ public class Notifications {
         if (note.repeatType == NoteRepeatTypes.NO_REPEAT) {
             return DateHelper.getDateTime(note.date, note.startDateTime).getTimeInMillis();
         } else {
-            boolean isCurrentTimeBeforeTriggerTime = DateHelper.getTime(Calendar.getInstance()).before(note.startDateTime);
-            boolean isCurrentTimeEqualsTriggerTime = DateHelper.getTime(Calendar.getInstance()).equals(note.startDateTime);
-            boolean includeCurrentDate = isCurrentTimeBeforeTriggerTime || (isCurrentTimeEqualsTriggerTime && !isRepeatReschedule);
+            Calendar searchFromDateTime = DateHelper.startOf(Calendar.getInstance(), "minute");
+            if (isRepeatReschedule) {
+                searchFromDateTime.add(Calendar.MINUTE, 1);
+            }
+            Calendar searchFromDate = DateHelper.startOf(searchFromDateTime, "day");
 
-            Calendar nextTriggerDate = getRepeatNextTriggerDate(note.repeatType, note.repeatValues, includeCurrentDate);
-            Calendar nextTriggerTime = note.startDateTime;
-
-            ArrayList<Note> closestForkedNotes = NoteRepository.getInstance().queryNotes(
+            ArrayList<Note> _forkedNotes = NoteRepository.getInstance().queryNotes(
                     "SELECT " + NoteRepository.noteSQLFields
                             + " FROM Notes n"
-                            + " WHERE forkFrom = ? AND (date <= ? OR (date = ? AND startTime < ?))"
-                            + " ORDER BY date DESC, startTime DESC"
-                            + " LIMIT 1",
+                            + " WHERE forkFrom = ? AND (date >= ? OR repeatItemDate >= ?)",
                     new String[] {
                             Integer.toString(id),
-                            Long.toString(nextTriggerDate.getTimeInMillis()),
-                            Long.toString(nextTriggerDate.getTimeInMillis()),
-                            Long.toString(note.startDateTime.getTimeInMillis()),
+                            Long.toString(DateHelper.convertFromLocalToUTC(searchFromDate).getTimeInMillis()),
+                            Long.toString(DateHelper.convertFromLocalToUTC(searchFromDate).getTimeInMillis()),
                     }
             );
 
-            if (!closestForkedNotes.isEmpty()) {
-                Note closestForkedNote = closestForkedNotes.get(0);
-                nextTriggerDate = closestForkedNote.date;
-                nextTriggerTime = closestForkedNote.startDateTime;
+            ArrayList<Note> forkedNotesByRepeatItemDate = new ArrayList<Note>();
+            for (Note forkedNote : _forkedNotes) {
+                if (!forkedNote.repeatItemDate.before(searchFromDate)) {
+                    forkedNotesByRepeatItemDate.add(forkedNote);
+                }
+            }
+            Collections.sort(forkedNotesByRepeatItemDate, new Comparator<Note>() {
+                @Override
+                public int compare(Note a, Note b) {
+                    return (int) (a.repeatItemDate.getTimeInMillis() - b.repeatItemDate.getTimeInMillis());
+                }
+            });
+
+            ArrayList<Note> forkedNotesByDateTime = new ArrayList<Note>();
+            for (Note forkedNote : _forkedNotes) {
+                if (!DateHelper.getDateTime(forkedNote.date, forkedNote.startDateTime).before(searchFromDateTime) && forkedNote.isNotificationEnabled) {
+                    forkedNotesByDateTime.add(forkedNote);
+                }
+            }
+            Collections.sort(forkedNotesByDateTime, new Comparator<Note>() {
+                @Override
+                public int compare(Note a, Note b) {
+                    return (int) (DateHelper.getDateTime(a.date, a.startDateTime).getTimeInMillis() - DateHelper.getDateTime(b.date, b.startDateTime).getTimeInMillis());
+                }
+            });
+            Calendar closestForkedNoteDateTime = null;
+            ArrayList<Integer> closestForkedNoteDateTimeNoteIDs = new ArrayList<>();
+            if (!forkedNotesByDateTime.isEmpty()) {
+                closestForkedNoteDateTime = DateHelper.getDateTime(forkedNotesByDateTime.get(0).date, forkedNotesByDateTime.get(0).startDateTime);
+                for (Note forkedNote : forkedNotesByDateTime) {
+                    if (!DateHelper.getDateTime(forkedNote.date, forkedNote.startDateTime).equals(closestForkedNoteDateTime)) {
+                        closestForkedNoteDateTimeNoteIDs.add(forkedNote.id);
+                    }
+                }
             }
 
-            if (nextTriggerDate == null) {
-                return null;
+            Calendar nextTriggerDateTime = null;
+            ArrayList<Integer> nextTriggerDateTimeNoteIDs = new ArrayList<>();
+
+            Calendar _nextTriggerDateTime = null;
+            boolean isNextTriggerDateTimeFound = false;
+            while(!isNextTriggerDateTimeFound) {
+                Calendar _searchFromDateTime = null;
+                if (_nextTriggerDateTime == null) {
+                    _searchFromDateTime = (Calendar) searchFromDate.clone();
+                } else {
+                    _searchFromDateTime = (Calendar) _nextTriggerDateTime.clone();
+                    _searchFromDateTime.add(Calendar.MINUTE, 1);
+                }
+                _nextTriggerDateTime = getRepeatNextTriggerDateTime(_searchFromDateTime, note.repeatType, note.repeatValues, note.startDateTime);
+
+                if (_nextTriggerDateTime == null) {
+                    if (closestForkedNoteDateTime != null) {
+                        nextTriggerDateTime = (Calendar) closestForkedNoteDateTime.clone();
+                        nextTriggerDateTimeNoteIDs.addAll(closestForkedNoteDateTimeNoteIDs);
+                    }
+                    isNextTriggerDateTimeFound = true;
+                } else {
+                    boolean isTriggerDateTimeReplacedByForkedNote = false;
+                    for (Note forkedNote : forkedNotesByRepeatItemDate) {
+                        if (DateHelper.getDateTime(forkedNote.repeatItemDate, forkedNote.startDateTime).equals(_nextTriggerDateTime)) {
+                            isTriggerDateTimeReplacedByForkedNote = true;
+                            break;
+                        }
+                    }
+
+                    if (closestForkedNoteDateTime != null && !closestForkedNoteDateTime.after(_nextTriggerDateTime)) {
+                        nextTriggerDateTime = (Calendar) closestForkedNoteDateTime.clone();
+                        nextTriggerDateTimeNoteIDs.addAll(closestForkedNoteDateTimeNoteIDs);
+
+                        if (closestForkedNoteDateTime.equals(_nextTriggerDateTime) && !isTriggerDateTimeReplacedByForkedNote) {
+                            nextTriggerDateTimeNoteIDs.add(note.id);
+                        }
+
+                        isNextTriggerDateTimeFound = true;
+                    } else if (!isTriggerDateTimeReplacedByForkedNote) {
+                        nextTriggerDateTime = (Calendar) closestForkedNoteDateTime.clone();
+                        nextTriggerDateTimeNoteIDs.add(note.id);
+
+                        isNextTriggerDateTimeFound = true;
+                    }
+                }
             }
 
-            return DateHelper.getDateTime(nextTriggerDate, nextTriggerTime).getTimeInMillis();
-
-            // TODO: save note id's for show notification on next trigger
+            return nextTriggerDateTime.getTimeInMillis();
         }
     }
 
-    static private Calendar getRepeatNextTriggerDate(NoteRepeatTypes repeatType, ArrayList<Long> repeatValues, boolean includeCurrentDate) {
+    static private Calendar getRepeatNextTriggerDateTime(Calendar searchStartDateTime, NoteRepeatTypes repeatType, ArrayList<Long> repeatValues, Calendar time) {
+        boolean includeCurrentDate = !DateHelper.getTime(searchStartDateTime).after(time);
+
+        Calendar resultDate = null;
+
         if (repeatType == NoteRepeatTypes.DAY) {
-            Calendar resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
+            Calendar _resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
 
             if (!includeCurrentDate) {
                 resultDate.add(Calendar.DATE, 1);
             }
 
-            return resultDate;
+            resultDate = _resultDate;
         } else if (repeatType == NoteRepeatTypes.WEEK) {
             int currentWeekDay = DateHelper.getDayOfWeekNumber(Calendar.getInstance());
             ArrayList<Long> _repeatValues = new ArrayList<>(repeatValues);
@@ -134,10 +211,10 @@ public class Notifications {
                 }
             }
 
-            Calendar resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
-            resultDate.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
+            Calendar _resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
+            _resultDate.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
 
-            return resultDate;
+            resultDate = _resultDate;
         } else if (repeatType == NoteRepeatTypes.ANY) {
             Long currentDateMS = DateHelper.startOf(Calendar.getInstance(), "day").getTimeInMillis();
 
@@ -151,14 +228,17 @@ public class Notifications {
                 }
             }
 
-            if (result == null) {
-                return null;
+            if (result != null) {
+                resultDate = DateHelper.getCalendar(result);
             }
 
-            return DateHelper.getCalendar(result);
         }
 
-        return null;
+        if (resultDate != null) {
+            return DateHelper.getDateTime(resultDate, time);
+        } else {
+            return null;
+        }
     }
 
     static public void cancel(int id) {
