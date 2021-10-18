@@ -155,6 +155,10 @@ public class Notifications {
                 }
                 _nextTriggerDateTime = getRepeatNextTriggerDateTime(_searchFromDateTime, note.repeatType, note.repeatValues, note.startDateTime);
 
+                if (!note.isNotificationEnabled) {
+                    _nextTriggerDateTime = null;
+                }
+
                 if (_nextTriggerDateTime == null) {
                     if (closestForkedNoteDateTime != null) {
                         nextTriggerDateTime = (Calendar) closestForkedNoteDateTime.clone();
