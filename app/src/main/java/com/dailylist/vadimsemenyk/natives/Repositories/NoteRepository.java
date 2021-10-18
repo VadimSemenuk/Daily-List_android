@@ -153,6 +153,16 @@ public class NoteRepository {
             note.repeatItemDate = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_repeatItemDate, TimeZone.getTimeZone("UTC")));
         }
 
+        if (!cursor.isNull(cursor.getColumnIndex("repeatStartDate"))) {
+            long _repeatStartDate = cursor.getLong(cursor.getColumnIndex("repeatStartDate"));
+            note.repeatStartDate = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_repeatStartDate, TimeZone.getTimeZone("UTC")));
+        }
+
+        if (!cursor.isNull(cursor.getColumnIndex("repeatEndDate"))) {
+            long _repeatEndDate = cursor.getLong(cursor.getColumnIndex("repeatEndDate"));
+            note.repeatItemDate = DateHelper.convertFromUTCToLocal(DateHelper.getCalendar(_repeatEndDate, TimeZone.getTimeZone("UTC")));
+        }
+
         note.isFinished = cursor.getInt(cursor.getColumnIndex("isFinished")) == 1;
 
         note.isNotificationEnabled = cursor.getInt(cursor.getColumnIndex("isNotificationEnabled")) == 1;

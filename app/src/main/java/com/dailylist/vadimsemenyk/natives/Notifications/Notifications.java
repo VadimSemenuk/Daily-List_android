@@ -155,7 +155,7 @@ public class Notifications {
                 }
                 _nextTriggerDateTime = getRepeatNextTriggerDateTime(_searchFromDateTime, note.repeatType, note.repeatValues, note.startDateTime);
 
-                if (!note.isNotificationEnabled) {
+                if (!note.isNotificationEnabled || (note.repeatEndDate != null && note.repeatEndDate.after(_nextTriggerDateTime))) {
                     _nextTriggerDateTime = null;
                 }
 

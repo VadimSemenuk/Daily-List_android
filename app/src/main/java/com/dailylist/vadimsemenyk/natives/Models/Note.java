@@ -25,6 +25,8 @@ public class Note implements Serializable {
     public Calendar repeatItemDate;
     public Calendar date;
     public boolean isNotificationEnabled;
+    public Calendar repeatStartDate;
+    public Calendar repeatEndDate;
 
     public Note() {}
 }
