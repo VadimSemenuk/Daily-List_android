@@ -35,7 +35,7 @@ public class Notifications {
 
     static String EXTRA_ID = "id";
     static String EXTRA_NOTES = "notes";
-    static String EXTRA_IS_REPEAT = "is_repeat";
+    static String EXTRA_SHOULD_RESCHEDULE = "should_reschedule";
 
     public Notifications() { }
 
@@ -50,9 +50,9 @@ public class Notifications {
 
         Intent intent = new Intent(App.getAppContext(), NotificationsReceiver.class);
         intent.setAction(getShowActionName(id));
-        intent.putExtra(EXTRA_ID, id);
+        intent.putExtra(EXTRA_ID, trigger.id);
         intent.putExtra(EXTRA_NOTES, TextUtils.join(",", trigger.noteIDs));
-        intent.putExtra(EXTRA_IS_REPEAT, trigger.isRepeat);
+        intent.putExtra(EXTRA_SHOULD_RESCHEDULE, trigger.shouldReschedule);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(App.getAppContext(), 0, intent, PendingIntent.FLAG_CANCEL_CURRENT);
 
         AlarmManager alarmManager = (AlarmManager) App.getAppContext().getSystemService(Context.ALARM_SERVICE);
@@ -73,6 +73,7 @@ public class Notifications {
         ArrayList<Integer> nextTriggerNotesIDs = new ArrayList<>();
 
         Note note = NoteRepository.getInstance().getNote(id);
+        // TODO: check for empty note
 
         if (note.repeatType == NoteRepeatTypes.NO_REPEAT) {
             nextTriggerDateTime = DateHelper.getDateTime(note.date, note.startDateTime);
@@ -134,9 +135,10 @@ public class Notifications {
         }
 
         TriggerOptions options = new TriggerOptions();
+        options.id = id;
         options.dateTime = nextTriggerDateTime;
         options.noteIDs = nextTriggerNotesIDs;
-        options.isRepeat = note.repeatType != NoteRepeatTypes.NO_REPEAT;
+        options.shouldReschedule = note.repeatType != NoteRepeatTypes.NO_REPEAT;
 
         return options;
     }
