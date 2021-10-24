@@ -20,7 +20,7 @@ public enum SortDirection {
         }
     }
 
-    public static SortDirection valueOf(int noteAction) {
+    public static SortDirection getDefinition(int noteAction) {
         return (SortDirection) map.get(noteAction);
     }
 

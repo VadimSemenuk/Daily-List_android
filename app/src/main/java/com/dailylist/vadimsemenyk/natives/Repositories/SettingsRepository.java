@@ -28,8 +28,8 @@ public class SettingsRepository {
             do {
 
                 settings.sortFinBehaviour = cursor.getInt(cursor.getColumnIndex("sortFinBehaviour"));
-                settings.sortType = SortType.valueOf(cursor.getInt(cursor.getColumnIndex("sortType")));
-                settings.sortDirection = SortDirection.valueOf(cursor.getInt(cursor.getColumnIndex("sortDirection")));
+                settings.sortType = SortType.getDefinition(cursor.getInt(cursor.getColumnIndex("sortType")));
+                settings.sortDirection = SortDirection.getDefinition(cursor.getInt(cursor.getColumnIndex("sortDirection")));
                 settings.lang = cursor.getString(cursor.getColumnIndex("lang"));
                 settings.autoMoveNotFinishedNotes = cursor.getInt(cursor.getColumnIndex("autoMoveNotFinishedNotes")) == 1;
                 settings.password = cursor.getString(cursor.getColumnIndex("password"));

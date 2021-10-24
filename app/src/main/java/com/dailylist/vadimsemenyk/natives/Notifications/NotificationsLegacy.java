@@ -62,7 +62,7 @@ public class NotificationsLegacy {
         );
 
         for (Note note : notes) {
-            Notifications.schedule(note.id);
+            Notifications.schedule(note.id, false);
         }
     }
 

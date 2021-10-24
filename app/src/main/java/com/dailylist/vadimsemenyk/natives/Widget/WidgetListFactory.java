@@ -150,7 +150,7 @@ public class WidgetListFactory implements RemoteViewsFactory {
     public void onDataSetChanged() {
         SharedPreferences sp = context.getSharedPreferences(WidgetProvider.WIDGET_SP, Context.MODE_PRIVATE);
         int _type = sp.getInt(WidgetProvider.WIDGET_SP_LIST_TYPE + "_" + widgetID,  1);
-        NoteTypes type = NoteTypes.valueOf(_type);
+        NoteTypes type = NoteTypes.getDefinition(_type);
 
         Calendar date = DateHelper.startOf(DateHelper.convertFromLocalToUTC(Calendar.getInstance()), "day");
 

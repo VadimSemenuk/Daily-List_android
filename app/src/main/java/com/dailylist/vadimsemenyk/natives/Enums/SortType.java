@@ -20,7 +20,7 @@ public enum SortType {
         }
     }
 
-    public static SortType valueOf(int noteAction) {
+    public static SortType getDefinition(int noteAction) {
         return (SortType) map.get(noteAction);
     }
 

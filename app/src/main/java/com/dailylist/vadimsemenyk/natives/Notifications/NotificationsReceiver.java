@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 
-import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
@@ -28,56 +27,32 @@ public class NotificationsReceiver extends BroadcastReceiver {
                 return;
             }
 
-            Note note = NoteRepository.getInstance().getNote(id);
+            String noteIDsJoined = extras.getString(Notifications.EXTRA_NOTES);
 
-            ArrayList<NotificationOptions> optionsList = new ArrayList<NotificationOptions>();
-
-            if (note.repeatType == NoteRepeatTypes.NO_REPEAT) {
-                 optionsList.add(getNotificationOptions(note));
-            } else {
-                ArrayList<Note> repeatItemForkedNotes = NoteRepository.getInstance().getNotes(
-                        "forkFrom = ? AND repeatItemDate = ? AND startTime = ?",
-                        new String[] {
-                                Integer.toString(note.id),
-                                Long.toString(note.date.getTimeInMillis()),
-                                Long.toString(note.startDateTime.getTimeInMillis()),
-                        }
+            if (!noteIDsJoined.isEmpty()) {
+                ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
+                        "SELECT " + NoteRepository.noteSQLFields
+                                + " FROM Notes n"
+                                + " WHERE id IN (?)",
+                        new String[] { noteIDsJoined }
                 );
 
-                ArrayList<Note> forkedNotes = NoteRepository.getInstance().getNotes(
-                        "forkFrom = ? AND date = ? AND startTime = ?",
-                        new String[] {
-                                Integer.toString(note.id),
-                                Long.toString(note.date.getTimeInMillis()),
-                                Long.toString(note.startDateTime.getTimeInMillis()),
-                        }
-                );
+                for (Note note : notes) {
+                    NotificationOptions notificationOptions = new NotificationOptions();
+                    notificationOptions.id = note.id;
+                    notificationOptions.title = note.title;
+                    notificationOptions.text = Notifications.getText(note.contentItems);
+                    notificationOptions.triggerTime = note.startDateTime;
 
-                if (!forkedNotes.isEmpty()) {
-                    for (Note forkedNote : forkedNotes) {
-                        optionsList.add(getNotificationOptions(forkedNote));
-                    }
+                    Notification notification = Notifications.build(notificationOptions);
+                    Notifications.show(notificationOptions.id, notification);
                 }
             }
 
-            for (NotificationOptions options : optionsList) {
-                Notification notification = Notifications.build(options);
-                Notifications.show(options.id, notification);
-            }
-
-            if (note.repeatType != NoteRepeatTypes.NO_REPEAT) {
-                Notifications.schedule(note.id, true);
+            boolean isRepeat = extras.getBoolean(Notifications.EXTRA_IS_REPEAT);
+            if (isRepeat) {
+                Notifications.schedule(id, true);
             }
         }
-    }
-
-    private NotificationOptions getNotificationOptions(Note note) {
-        NotificationOptions options = new NotificationOptions();
-        options.id = note.id;
-        options.title = note.title;
-        options.text = Notifications.getText(note);
-        options.triggerTime = note.startDateTime;
-
-        return options;
     }
 }

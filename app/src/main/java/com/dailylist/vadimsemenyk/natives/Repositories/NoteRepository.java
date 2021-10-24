@@ -198,9 +198,9 @@ public class NoteRepository {
 
         note.forkFrom = cursor.isNull(cursor.getColumnIndex("forkFrom")) ? null : cursor.getInt(cursor.getColumnIndex("forkFrom"));
 
-        note.isShadow = cursor.isNull(cursor.getColumnIndex("date")) && (NoteTypes.valueOf(cursor.getInt(cursor.getColumnIndex("mode"))) == NoteTypes.Diary);
+        note.isShadow = cursor.isNull(cursor.getColumnIndex("date")) && (NoteTypes.getDefinition(cursor.getInt(cursor.getColumnIndex("mode"))) == NoteTypes.Diary);
 
-        note.repeatType = NoteRepeatTypes.valueOf(cursor.getString(cursor.getColumnIndex("repeatType")));
+        note.repeatType = NoteRepeatTypes.getDefinition(cursor.getString(cursor.getColumnIndex("repeatType")));
 
         ArrayList<String> repeatValues = cursor.isNull(cursor.getColumnIndex("repeatValues")) ? new ArrayList<>() : new ArrayList<>(Arrays.asList(cursor.getString(cursor.getColumnIndex("repeatValues")).split(",")));
         note.repeatValues = new ArrayList<Long>();
@@ -285,7 +285,7 @@ public class NoteRepository {
     }
 
     public Note getNote(int id) {
-        return queryNotes("id = ?", new String[] {Integer.toString(id)}).get(0);
+        return getNotes("id = ?", new String[] {Integer.toString(id)}).get(0);
     }
 
     public void moveNotFinishedNotesForToday() {

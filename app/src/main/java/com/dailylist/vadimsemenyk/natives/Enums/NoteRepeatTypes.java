@@ -1,18 +1,12 @@
 package com.dailylist.vadimsemenyk.natives.Enums;
 
-import com.google.gson.annotations.SerializedName;
-
 import java.util.HashMap;
 import java.util.Map;
 
 public enum NoteRepeatTypes {
-    @SerializedName("no-repeat")
     NO_REPEAT("no-repeat"),
-    @SerializedName("day")
     DAY("day"),
-    @SerializedName("week")
     WEEK("week"),
-    @SerializedName("any")
     ANY("any");
 
     private final String value;
@@ -26,6 +20,10 @@ public enum NoteRepeatTypes {
         for (NoteRepeatTypes noteRepeatType : NoteRepeatTypes.values()) {
             map.put(noteRepeatType.value, noteRepeatType);
         }
+    }
+
+    public static NoteRepeatTypes getDefinition(String noteTypes) {
+        return (NoteRepeatTypes) map.get(noteTypes);
     }
 
     public String getValue() {

@@ -20,7 +20,7 @@ public enum NoteTypes {
         }
     }
 
-    public static NoteTypes valueOf(int noteTypes) {
+    public static NoteTypes getDefinition(int noteTypes) {
         return (NoteTypes) map.get(noteTypes);
     }
 

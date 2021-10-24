@@ -41,21 +41,23 @@ public class DateHelper {
     }
 
     public static Calendar startOf(Calendar dateTime, String precision) {
-        dateTime.set(Calendar.MILLISECOND, 0);
-        dateTime.set(Calendar.SECOND, 0);
+        Calendar resultDateTime = (Calendar) dateTime.clone();
+
+        resultDateTime.set(Calendar.MILLISECOND, 0);
+        resultDateTime.set(Calendar.SECOND, 0);
 
         if (precision.equals("minute")) {
-            return dateTime;
+            return resultDateTime;
         }
 
-        dateTime.set(Calendar.MINUTE, 0);
-        dateTime.set(Calendar.HOUR_OF_DAY, 0);
+        resultDateTime.set(Calendar.MINUTE, 0);
+        resultDateTime.set(Calendar.HOUR_OF_DAY, 0);
 
         if (precision.equals("day")) {
-            return dateTime;
+            return resultDateTime;
         }
 
-        return dateTime;
+        return resultDateTime;
     }
 
     static public Calendar getDateTime(Calendar date, Calendar time) {
