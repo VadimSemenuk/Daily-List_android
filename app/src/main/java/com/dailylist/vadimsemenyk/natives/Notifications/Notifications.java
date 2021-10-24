@@ -13,9 +13,7 @@ import android.text.TextUtils;
 
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.App;
-import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
-import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemImage;
 import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemTextArea;
@@ -23,7 +21,6 @@ import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Collections;
 
 public class Notifications {
     static String CHANNEL_ID = "com.dailylist.vadimsemenyk.notification";
@@ -112,7 +109,7 @@ public class Notifications {
                 .setContentTitle(options.title.isEmpty() ? null : options.title)
                 .setContentText(options.text.isEmpty() ? null : options.text)
                 .setTicker(options.text.isEmpty() ? null : options.text)
-                .setWhen(options.triggerTime.getTimeInMillis());
+                .setWhen(DateHelper.getDateTime(DateHelper.startOf(Calendar.getInstance(), "day"), options.triggerTime).getTimeInMillis());
 
         return builder.build();
     }
