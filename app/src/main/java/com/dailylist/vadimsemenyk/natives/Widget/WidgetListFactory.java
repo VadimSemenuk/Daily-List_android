@@ -72,13 +72,13 @@ public class WidgetListFactory implements RemoteViewsFactory {
 
         remoteView.setInt(R.id.color_tag, "setBackgroundColor", Color.parseColor(note.colorTag.equals("transparent") ? "#00000000" : note.colorTag));
 
-        if (note.startDateTime != null || note.endDateTime != null) {
+        if (note.startTime != null || note.endTime != null) {
             remoteView.setInt(R.id.meta, "setVisibility", View.VISIBLE);
 
             SimpleDateFormat timeFormatter = new SimpleDateFormat("HH:mm");
 
-            remoteView.setTextViewText(R.id.start_time, note.startDateTime != null ? timeFormatter.format(note.startDateTime.getTime()) : "");
-            remoteView.setTextViewText(R.id.end_time, note.endDateTime != null ? " - " + timeFormatter.format(note.endDateTime.getTime()) : "");
+            remoteView.setTextViewText(R.id.start_time, note.startTime != null ? timeFormatter.format(note.startTime.getTime()) : "");
+            remoteView.setTextViewText(R.id.end_time, note.endTime != null ? " - " + timeFormatter.format(note.endTime.getTime()) : "");
         } else {
             remoteView.setInt(R.id.meta, "setVisibility", View.GONE);
         }

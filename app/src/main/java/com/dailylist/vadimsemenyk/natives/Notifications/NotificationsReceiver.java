@@ -25,10 +25,10 @@ public class NotificationsReceiver extends BroadcastReceiver {
 
             if (!triggerOptions.noteIDs.isEmpty()) {
                 ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
-                        "SELECT " + NoteRepository.noteSQLFields
-                                + " FROM Notes n"
-                                + " WHERE id IN (?)",
-                        new String[] { TextUtils.join(",", triggerOptions.noteIDs) }
+                        "SELECT id, title, contentItems, startTime"
+                        + " FROM Notes n"
+                        + " WHERE id IN (" + TextUtils.join(",", triggerOptions.noteIDs) + ")",
+                        new String[] {}
                 );
 
                 for (Note note : notes) {
@@ -36,7 +36,7 @@ public class NotificationsReceiver extends BroadcastReceiver {
                     notificationOptions.id = note.id;
                     notificationOptions.title = note.title;
                     notificationOptions.text = Notifications.getText(note.contentItems);
-                    notificationOptions.triggerTime = note.startDateTime;
+                    notificationOptions.triggerTime = note.startTime;
 
                     Notification notification = Notifications.build(notificationOptions);
                     Notifications.show(notificationOptions.id, notification);
@@ -50,16 +50,19 @@ public class NotificationsReceiver extends BroadcastReceiver {
     }
 
     private TriggerOptions getOptions(Bundle extras) {
-        ArrayList<String> _noteIDs = new ArrayList<String>(Arrays.asList(extras.getString(Notifications.EXTRA_NOTES).split(",")));
+        String notesJoined = extras.getString(Notifications.EXTRA_NOTES);
         ArrayList<Integer> noteIDs = new ArrayList<Integer>();
-        for (String _noteID : _noteIDs) {
-            noteIDs.add(Integer.parseInt(_noteID));
+        if (!notesJoined.isEmpty()) {
+            ArrayList<String> _noteIDs = new ArrayList<String>(Arrays.asList(extras.getString(Notifications.EXTRA_NOTES).split(",")));
+            for (String _noteID : _noteIDs) {
+                noteIDs.add(Integer.parseInt(_noteID));
+            }
         }
 
         TriggerOptions options = new TriggerOptions();
         options.id = extras.getInt(Notifications.EXTRA_ID, -1);
         options.noteIDs = noteIDs;
-        options.shouldReschedule = extras.getBoolean(Notifications.EXTRA_ID);
+        options.shouldReschedule = extras.getBoolean(Notifications.EXTRA_SHOULD_RESCHEDULE);
 
         return options;
     }

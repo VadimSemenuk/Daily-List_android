@@ -42,9 +42,9 @@ public class Notifications {
     // schedule notification
 
     static public void schedule(int id, boolean isRepeatReschedule) {
-        TriggerOptions trigger = getNextTrigger(id, isRepeatReschedule);
+        TriggerOptions trigger = NoteRepository.getInstance().getNextNotificationTrigger(id, isRepeatReschedule);
 
-        if (trigger.dateTime == null) {
+        if (trigger == null || trigger.dateTime == null) {
             return;
         }
 
@@ -65,138 +65,6 @@ public class Notifications {
         } catch (Exception ignore) {
             // Samsung devices have a known bug where a 500 alarms limit
             // can crash the app
-        }
-    }
-
-    static private TriggerOptions getNextTrigger(int id, boolean isRepeatReschedule) {
-        Calendar nextTriggerDateTime = null;
-        ArrayList<Integer> nextTriggerNotesIDs = new ArrayList<>();
-
-        Note note = NoteRepository.getInstance().getNote(id);
-        // TODO: check for empty note
-
-        if (note.repeatType == NoteRepeatTypes.NO_REPEAT) {
-            nextTriggerDateTime = DateHelper.getDateTime(note.date, note.startDateTime);
-            nextTriggerNotesIDs.add(note.id);
-        } else {
-            Calendar searchFromDateTime = DateHelper.startOf(Calendar.getInstance(), "minute");
-            if (isRepeatReschedule) {
-                searchFromDateTime.add(Calendar.MINUTE, 1);
-            }
-
-            nextTriggerDateTime = getRepeatNextTriggerDateTime(searchFromDateTime, note.repeatType, note.repeatValues, note.startDateTime);
-            if (!note.isNotificationEnabled || (note.repeatEndDate != null && note.repeatEndDate.after(nextTriggerDateTime))) {
-                nextTriggerDateTime = null;
-            }
-
-            String searchFromDateUTCMS = Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(searchFromDateTime, "day")).getTimeInMillis());
-            String searchFromTimeUTCMS = Long.toString(DateHelper.getTime(searchFromDateTime).getTimeInMillis());
-            ArrayList<Note> closestDateTimeForkedNotes = NoteRepository.getInstance().queryNotes(
-                    "SELECT " + NoteRepository.noteSQLFields
-                    + " FROM Notes n"
-                    + " INNER JOIN ("
-                        + " SELECT forkFrom, date, startTime"
-                        + " FROM Notes"
-                        + " WHERE forkFrom = ? AND isNotificationEnabled = ? AND (date > ? OR (date = ? AND startTime >= ?))"
-                        + " ORDER BY date ASC, startTime ASC"
-                        + " LIMIT 1"
-                    + " ) n1 USING (forkFrom, date, startTime)"
-                    + " WHERE n.forkFrom = ?",
-                    new String[] {Integer.toString(id), "1", searchFromDateUTCMS, searchFromDateUTCMS, searchFromTimeUTCMS, Integer.toString(id)}
-            );
-            Calendar closestForkedNoteDateTime = null;
-            ArrayList<Integer> closestForkedNotesIDs = new ArrayList<Integer>();
-            if (!closestDateTimeForkedNotes.isEmpty()) {
-                closestForkedNoteDateTime = DateHelper.getDateTime(closestDateTimeForkedNotes.get(0).date, closestDateTimeForkedNotes.get(0).startDateTime);
-                for (Note _note : closestDateTimeForkedNotes) {
-                    closestForkedNotesIDs.add(_note.id);
-                }
-            }
-
-            if (closestForkedNoteDateTime != null && (nextTriggerDateTime == null || !closestForkedNoteDateTime.after(nextTriggerDateTime))) {
-                nextTriggerDateTime = closestForkedNoteDateTime;
-                nextTriggerNotesIDs.addAll(closestForkedNotesIDs);
-            }
-
-            if (nextTriggerDateTime != null && (closestForkedNoteDateTime == null || closestForkedNoteDateTime.equals(nextTriggerDateTime))) {
-                ArrayList<Note> nextTriggerDateForkedNotes = NoteRepository.getInstance().queryNotes(
-                        "SELECT " + NoteRepository.noteSQLFields
-                                + " FROM Notes n"
-                                + " WHERE forkFrom = ? AND repeatItemDate = ?",
-                        new String[] {
-                                Integer.toString(id),
-                                Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(nextTriggerDateTime, "day")).getTimeInMillis()),
-                        }
-                );
-                if (nextTriggerDateForkedNotes.isEmpty()) {
-                    nextTriggerNotesIDs.add(note.id);
-                }
-            }
-        }
-
-        TriggerOptions options = new TriggerOptions();
-        options.id = id;
-        options.dateTime = nextTriggerDateTime;
-        options.noteIDs = nextTriggerNotesIDs;
-        options.shouldReschedule = note.repeatType != NoteRepeatTypes.NO_REPEAT;
-
-        return options;
-    }
-
-    static private Calendar getRepeatNextTriggerDateTime(Calendar searchStartDateTime, NoteRepeatTypes repeatType, ArrayList<Long> repeatValues, Calendar time) {
-        boolean includeCurrentDate = !DateHelper.getTime(searchStartDateTime).after(time);
-
-        Calendar resultDate = null;
-
-        if (repeatType == NoteRepeatTypes.DAY) {
-            Calendar _resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
-
-            if (!includeCurrentDate) {
-                _resultDate.add(Calendar.DATE, 1);
-            }
-
-            resultDate = _resultDate;
-        } else if (repeatType == NoteRepeatTypes.WEEK && !repeatValues.isEmpty()) {
-            int currentWeekDay = DateHelper.getDayOfWeekNumber(Calendar.getInstance());
-            ArrayList<Long> _repeatValues = new ArrayList<>(repeatValues);
-
-            Collections.sort(_repeatValues);
-
-            Long result = _repeatValues.get(0);
-            for (Long repeatValue : _repeatValues) {
-                if (includeCurrentDate ? (repeatValue > currentWeekDay) : (repeatValue >= currentWeekDay)) {
-                    result = repeatValue;
-                    break;
-                }
-            }
-
-            Calendar _resultDate = DateHelper.startOf(Calendar.getInstance(), "day");
-            _resultDate.set(Calendar.DAY_OF_WEEK, DateHelper.getDayOfWeek(result.intValue()));
-
-            resultDate = _resultDate;
-        } else if (repeatType == NoteRepeatTypes.ANY && !repeatValues.isEmpty()) {
-            Long currentDateMS = DateHelper.startOf(Calendar.getInstance(), "day").getTimeInMillis();
-
-            Long result = null;
-            for (Long repeatValueUTC : repeatValues) {
-                Long repeatValue = DateHelper.convertFromUTCToLocal(repeatValueUTC).getTimeInMillis();
-
-                if (includeCurrentDate ? (repeatValue > currentDateMS) : (repeatValue >= currentDateMS)) {
-                    result = repeatValue;
-                    break;
-                }
-            }
-
-            if (result != null) {
-                resultDate = DateHelper.getCalendar(result);
-            }
-
-        }
-
-        if (resultDate != null) {
-            return DateHelper.getDateTime(resultDate, time);
-        } else {
-            return null;
         }
     }
 
