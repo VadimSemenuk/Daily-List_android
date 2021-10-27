@@ -21,35 +21,43 @@ public class NotificationsReceiver extends BroadcastReceiver {
         }
 
         if (intent.getAction().contains(Notifications.ACTION_SHOW)) {
-            TriggerOptions triggerOptions = getOptions(intent.getExtras());
-
-            if (!triggerOptions.noteIDs.isEmpty()) {
-                ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
-                        "SELECT id, title, contentItems, startTime"
-                        + " FROM Notes n"
-                        + " WHERE id IN (" + TextUtils.join(",", triggerOptions.noteIDs) + ")",
-                        new String[] {}
-                );
-
-                for (Note note : notes) {
-                    NotificationOptions notificationOptions = new NotificationOptions();
-                    notificationOptions.id = note.id;
-                    notificationOptions.title = note.title;
-                    notificationOptions.text = Notifications.getText(note.contentItems);
-                    notificationOptions.triggerTime = note.startTime;
-
-                    Notification notification = Notifications.build(notificationOptions);
-                    Notifications.show(notificationOptions.id, notification);
-                }
-            }
-
-            if (triggerOptions.shouldReschedule && triggerOptions.id != -1) {
-                Notifications.schedule(triggerOptions.id, true);
-            }
+            onShowNotification(intent);
+        } else if (
+                intent.getAction().equalsIgnoreCase(Intent.ACTION_TIMEZONE_CHANGED)
+                || intent.getAction().equalsIgnoreCase(Intent.ACTION_BOOT_COMPLETED)
+        ) {
+            onNotificationsReschedule();
         }
     }
 
-    private TriggerOptions getOptions(Bundle extras) {
+    private void onShowNotification(Intent intent) {
+        TriggerOptions triggerOptions = getTriggerOptions(intent.getExtras());
+
+        if (!triggerOptions.noteIDs.isEmpty()) {
+            ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
+                    "SELECT id, title, contentItems, startTime FROM Notes"
+                    + " WHERE id IN (" + TextUtils.join(",", triggerOptions.noteIDs) + ")",
+                    new String[] {}
+            );
+
+            for (Note note : notes) {
+                NotificationOptions notificationOptions = new NotificationOptions();
+                notificationOptions.id = note.id;
+                notificationOptions.title = note.title;
+                notificationOptions.text = NoteRepository.getInstance().getNotificationText(note.contentItems);
+                notificationOptions.triggerTime = note.startTime;
+
+                Notification notification = Notifications.build(notificationOptions);
+                Notifications.show(notificationOptions.id, notification);
+            }
+        }
+
+        if (triggerOptions.shouldReschedule && triggerOptions.id != -1) {
+            Notifications.schedule(triggerOptions.id, true);
+        }
+    }
+
+    private TriggerOptions getTriggerOptions(Bundle extras) {
         String notesJoined = extras.getString(Notifications.EXTRA_NOTES);
         ArrayList<Integer> noteIDs = new ArrayList<Integer>();
         if (!notesJoined.isEmpty()) {
@@ -65,5 +73,9 @@ public class NotificationsReceiver extends BroadcastReceiver {
         options.shouldReschedule = extras.getBoolean(Notifications.EXTRA_SHOULD_RESCHEDULE);
 
         return options;
+    }
+
+    private void onNotificationsReschedule() {
+        Notifications.scheduleAll();
     }
 }

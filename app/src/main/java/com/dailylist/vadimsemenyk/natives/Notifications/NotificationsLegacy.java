@@ -8,17 +8,8 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 
 import com.dailylist.vadimsemenyk.natives.App;
-import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
-import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
-import com.dailylist.vadimsemenyk.natives.Models.Note;
-import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
-
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
 import java.util.Set;
 
 public class NotificationsLegacy {
@@ -49,24 +40,5 @@ public class NotificationsLegacy {
         if (SDK_INT >= O) {
             ((NotificationManager) App.getAppContext().getSystemService(Context.NOTIFICATION_SERVICE)).deleteNotificationChannel(CHANNEL_ID);
         }
-    }
-
-    static public void scheduleNew() {
-        ArrayList<Note> notes = NoteRepository.getInstance().getNotes(
-                "isNotificationEnabled = ? AND (date IS NULL OR (date >= ? AND startTime >= ?))",
-                new String[] {
-                        "1",
-                        Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(Calendar.getInstance(), "day")).getTimeInMillis()),
-                        Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.getTime(Calendar.getInstance())).getTimeInMillis())
-                }
-        );
-
-        for (Note note : notes) {
-            Notifications.schedule(note.id, false);
-        }
-    }
-
-    static private String getText(Note note) {
-        return "123";
     }
 }

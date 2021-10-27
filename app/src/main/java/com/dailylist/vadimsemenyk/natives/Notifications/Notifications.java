@@ -13,10 +13,10 @@ import android.text.TextUtils;
 
 import com.dailylist.vadimsemenyk.R;
 import com.dailylist.vadimsemenyk.natives.App;
+import com.dailylist.vadimsemenyk.natives.Enums.NoteRepeatTypes;
+import com.dailylist.vadimsemenyk.natives.Enums.NoteTypes;
 import com.dailylist.vadimsemenyk.natives.Helpers.DateHelper;
-import com.dailylist.vadimsemenyk.natives.Models.NoteContentItem;
-import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemImage;
-import com.dailylist.vadimsemenyk.natives.Models.NoteContentItemTextArea;
+import com.dailylist.vadimsemenyk.natives.Models.Note;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
 
 import java.util.ArrayList;
@@ -36,12 +36,10 @@ public class Notifications {
 
     public Notifications() { }
 
-    // schedule notification
-
+    // region schedule notification
     static public void schedule(int id, boolean isRepeatReschedule) {
         TriggerOptions trigger = NoteRepository.getInstance().getNextNotificationTrigger(id, isRepeatReschedule);
-
-        if (trigger == null || trigger.dateTime == null) {
+        if (trigger == null) {
             return;
         }
 
@@ -65,6 +63,27 @@ public class Notifications {
         }
     }
 
+
+    static public void scheduleAll() {
+        String searchStartDateMsUTC = Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(Calendar.getInstance(), "day")).getTimeInMillis());
+
+        ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
+                "SELECT id FROM Notes"
+                        + " WHERE ((repeatType = ? AND isNotificationEnabled = ? AND date >= ?)"
+                        + " OR (repeatType != ? AND (repeatEndDate IS NULL OR repeatEndDate >= ?)))"
+                        + " AND mode = ?",
+                new String[] {
+                        NoteRepeatTypes.NO_REPEAT.getValue(), "1", searchStartDateMsUTC,
+                        NoteRepeatTypes.NO_REPEAT.getValue(), searchStartDateMsUTC,
+                        Integer.toString(NoteTypes.Diary.getValue())
+                }
+        );
+
+        for (Note note : notes) {
+            Notifications.schedule(note.id, false);
+        }
+    }
+
     static public void cancel(int id) {
         Intent intent = new Intent(App.getAppContext(), NotificationsReceiver.class);
         intent.setAction(getShowActionName(id));
@@ -74,12 +93,32 @@ public class Notifications {
         alarmManager.cancel(pendingIntent);
     }
 
+    static public void cancelAll() {
+        String searchStartDateMsUTC = Long.toString(DateHelper.convertFromLocalToUTC(DateHelper.startOf(Calendar.getInstance(), "day")).getTimeInMillis());
+
+        ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
+                "SELECT id FROM Notes"
+                        + " WHERE ((repeatType = ? AND isNotificationEnabled = ? AND date >= ?)"
+                        + " OR (repeatType != ? AND (repeatEndDate IS NULL OR repeatEndDate >= ?)))"
+                        + " AND mode = ?",
+                new String[] {
+                        NoteRepeatTypes.NO_REPEAT.getValue(), "1", searchStartDateMsUTC,
+                        NoteRepeatTypes.NO_REPEAT.getValue(), searchStartDateMsUTC,
+                        Integer.toString(NoteTypes.Diary.getValue())
+                }
+        );
+
+        for (Note note : notes) {
+            Notifications.cancel(note.id);
+        }
+    }
+
     static private String getShowActionName(int id) {
         return ACTION_SHOW + "_" + id;
     }
+    // endregion
 
-    // show notification
-
+    // region show notification
     static public void show(int id, Notification notification) {
         NotificationManager notificationManager = (NotificationManager) App.getAppContext().getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(id, notification);
@@ -131,38 +170,5 @@ public class Notifications {
         NotificationChannel channel = new NotificationChannel(CHANNEL_ID, CHANNEL_NAME, NotificationManager.IMPORTANCE_HIGH);
         notificationManager.createNotificationChannel(channel);
     }
-
-    static public String getText(ArrayList<NoteContentItem> contentItems) {
-        String text = "";
-        if (!contentItems.isEmpty()) {
-            if (contentItems.get(0) instanceof NoteContentItemImage) {
-                text = "picture";
-            } else {
-                NoteContentItem firstNotEmptyTextContentItem = null;
-
-                for (NoteContentItem contentItem : contentItems) {
-                    if (!contentItem.value.isEmpty()) {
-                        firstNotEmptyTextContentItem = contentItem;
-                        break;
-                    }
-                }
-
-                if (firstNotEmptyTextContentItem instanceof NoteContentItemTextArea) {
-                    text = firstNotEmptyTextContentItem.value;
-                } else {
-                    ArrayList<String> listItems = new ArrayList<String>();
-                    for (NoteContentItem contentItem : contentItems) {
-                        if (contentItem instanceof NoteContentItemTextArea) {
-                            listItems.add(contentItem.value);
-                        } else {
-                            break;
-                        }
-                    }
-
-                    text = TextUtils.join("; -", listItems) + ";";
-                }
-            }
-        }
-        return text;
-    }
+    // endregion
 }

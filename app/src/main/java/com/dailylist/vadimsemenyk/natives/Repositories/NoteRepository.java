@@ -1,6 +1,7 @@
 package com.dailylist.vadimsemenyk.natives.Repositories;
 
 import android.database.Cursor;
+import android.text.TextUtils;
 
 import com.dailylist.vadimsemenyk.natives.DBHelper;
 import com.dailylist.vadimsemenyk.natives.Enums.NoteActions;
@@ -415,6 +416,10 @@ public class NoteRepository {
         }
 
         if (note.repeatType == NoteRepeatTypes.NO_REPEAT) {
+            if (!note.isNotificationEnabled) {
+                return null;
+            }
+
             nextTriggerDateTime = DateHelper.getDateTime(note.date, note.startTime);
             nextTriggerNotesIDs.add((Integer) note.id);
         } else {
@@ -469,6 +474,10 @@ public class NoteRepository {
                 if (nextTriggerDateForkedNote == null) {
                     nextTriggerNotesIDs.add((Integer) note.id);
                 }
+            }
+
+            if (nextTriggerDateTime == null) {
+                return null;
             }
         }
 
@@ -536,6 +545,40 @@ public class NoteRepository {
         } else {
             return null;
         }
+    }
+
+    public String getNotificationText(ArrayList<NoteContentItem> contentItems) {
+        String text = "";
+        if (!contentItems.isEmpty()) {
+            if (contentItems.get(0) instanceof NoteContentItemImage) {
+                text = "picture";
+            } else {
+                NoteContentItem firstNotEmptyTextContentItem = null;
+
+                for (NoteContentItem contentItem : contentItems) {
+                    if (!contentItem.value.isEmpty()) {
+                        firstNotEmptyTextContentItem = contentItem;
+                        break;
+                    }
+                }
+
+                if (firstNotEmptyTextContentItem instanceof NoteContentItemTextArea) {
+                    text = firstNotEmptyTextContentItem.value;
+                } else {
+                    ArrayList<String> listItems = new ArrayList<String>();
+                    for (NoteContentItem contentItem : contentItems) {
+                        if (contentItem instanceof NoteContentItemTextArea) {
+                            listItems.add(contentItem.value);
+                        } else {
+                            break;
+                        }
+                    }
+
+                    text = TextUtils.join("; -", listItems) + ";";
+                }
+            }
+        }
+        return text;
     }
     // endregion
 }

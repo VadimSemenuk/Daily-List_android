@@ -2,12 +2,8 @@ package com.dailylist.vadimsemenyk.natives;
 
 import android.app.Activity;
 
-import com.dailylist.vadimsemenyk.natives.Helpers.SerializeHelper;
-import com.dailylist.vadimsemenyk.natives.Notifications.NotificationOptions;
 import com.dailylist.vadimsemenyk.natives.Notifications.Notifications;
 import com.dailylist.vadimsemenyk.natives.Widget.WidgetProvider;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -18,7 +14,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.lang.ref.WeakReference;
-import java.util.Calendar;
 import java.util.HashMap;
 
 public class Natives extends CordovaPlugin {
@@ -56,8 +51,18 @@ public class Natives extends CordovaPlugin {
             return true;
         } else if (action.equals("scheduleNotification")) {
             Notifications.schedule(Integer.parseInt(args), false);
+            return true;
+        } else if (action.equals("scheduleNotificationAll")) {
+            Notifications.scheduleAll();
+            callbackContext.success();
+            return true;
         } else if (action.equals("cancelNotification")) {
             Notifications.cancel(Integer.parseInt(args));
+            return true;
+        } else if (action.equals("cancelNotificationAll")) {
+            Notifications.cancelAll();
+            callbackContext.success();
+            return true;
         }
         return false;
     }
