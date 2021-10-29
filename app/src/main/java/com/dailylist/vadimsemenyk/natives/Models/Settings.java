@@ -10,4 +10,5 @@ public class Settings {
     public String lang;
     public boolean autoMoveNotFinishedNotes;
     public String password;
+    public boolean showNotificationForFinishedNotes;
 }

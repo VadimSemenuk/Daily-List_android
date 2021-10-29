@@ -8,7 +8,9 @@ import android.os.Bundle;
 import android.text.TextUtils;
 
 import com.dailylist.vadimsemenyk.natives.Models.Note;
+import com.dailylist.vadimsemenyk.natives.Models.Settings;
 import com.dailylist.vadimsemenyk.natives.Repositories.NoteRepository;
+import com.dailylist.vadimsemenyk.natives.Repositories.SettingsRepository;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,13 +36,19 @@ public class NotificationsReceiver extends BroadcastReceiver {
         TriggerOptions triggerOptions = getTriggerOptions(intent.getExtras());
 
         if (!triggerOptions.noteIDs.isEmpty()) {
+            Settings settings = SettingsRepository.getInstance().getSettings();
+
             ArrayList<Note> notes = NoteRepository.getInstance().queryNotes(
-                    "SELECT id, title, contentItems, startTime FROM Notes"
+                    "SELECT id, title, contentItems, startTime, isFinished FROM Notes"
                     + " WHERE id IN (" + TextUtils.join(",", triggerOptions.noteIDs) + ")",
                     new String[] {}
             );
 
             for (Note note : notes) {
+                if (!settings.showNotificationForFinishedNotes && !note.isFinished) {
+                    continue;
+                }
+
                 NotificationOptions notificationOptions = new NotificationOptions();
                 notificationOptions.id = note.id;
                 notificationOptions.title = note.title;

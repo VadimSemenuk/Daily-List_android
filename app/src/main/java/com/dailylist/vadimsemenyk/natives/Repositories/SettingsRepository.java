@@ -8,31 +8,32 @@ import com.dailylist.vadimsemenyk.natives.Enums.SortType;
 import com.dailylist.vadimsemenyk.natives.Models.Settings;
 
 public class SettingsRepository {
-    private static final SettingsRepository ourInstance = new SettingsRepository();
-
-    public static SettingsRepository getInstance() {
-        return ourInstance;
-    }
+    static private SettingsRepository instance = null;
 
     private SettingsRepository() {}
 
-    public Settings getSettings() {
-        // TODO: check for null pointer exception
+    static public SettingsRepository getInstance() {
+        if (instance == null) {
+            instance = new SettingsRepository();
+        }
+        return instance;
+    }
 
+    public Settings getSettings() {
         Settings settings = new Settings();
 
-        String sql = "SELECT sortFinBehaviour, sortType, sortDirection, lang, autoMoveNotFinishedNotes, password FROM Settings;";
+        String sql = "SELECT sortFinBehaviour, sortType, sortDirection, lang, autoMoveNotFinishedNotes, password, showNotificationForFinishedNotes FROM Settings;";
         Cursor cursor = DBHelper.getInstance().getReadableDatabase().rawQuery(sql, null);
 
         if (cursor.moveToFirst()) {
             do {
-
                 settings.sortFinBehaviour = cursor.getInt(cursor.getColumnIndex("sortFinBehaviour"));
                 settings.sortType = SortType.getDefinition(cursor.getInt(cursor.getColumnIndex("sortType")));
                 settings.sortDirection = SortDirection.getDefinition(cursor.getInt(cursor.getColumnIndex("sortDirection")));
                 settings.lang = cursor.getString(cursor.getColumnIndex("lang"));
                 settings.autoMoveNotFinishedNotes = cursor.getInt(cursor.getColumnIndex("autoMoveNotFinishedNotes")) == 1;
                 settings.password = cursor.getString(cursor.getColumnIndex("password"));
+                settings.showNotificationForFinishedNotes = cursor.getInt(cursor.getColumnIndex("showNotificationForFinishedNotes")) == 1;
             }
             while (cursor.moveToNext());
         }
